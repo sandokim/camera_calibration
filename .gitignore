@@ -1,0 +1,6 @@
+*.pyc
+.vscode
+chessboard/
+logs/
+dataset/
+nerf_benchmark_dataset_pose_vis/nerf_synthetic/
