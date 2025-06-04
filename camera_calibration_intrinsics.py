@@ -128,11 +128,11 @@ def calibrate_camera(objpoints, imgpoints, gray):
 
 
 def main():
-    checkerboard_path = os.path.join("./chessboard/RealSense_D435_RGB_CAM/")
+    checkerboard_path = os.path.join("multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/cam2/")
     logger.info(f'chessboard_path: {checkerboard_path}')
     objpoints, imgpoints = find_checkerboard_corners(checkerboard_path)
     # 첫 번째 이미지의 해상도로 이미지 모양 설정
-    image = cv.imread(glob.glob(os.path.join(checkerboard_path, "*.png"))[0])
+    image = cv.imread(glob.glob(os.path.join(checkerboard_path, "*.jpg"))[0])
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     
     H, W, _ = image.shape
@@ -163,7 +163,7 @@ def main():
     }
     logger.info(calibration_data)
     
-    with open("intrinsics.json", "w") as json_file:
+    with open(os.path.join(checkerboard_path, "intrinsics.json"), "w") as json_file:
         json.dump(calibration_data, json_file, indent=4)
 
 if __name__ == "__main__":

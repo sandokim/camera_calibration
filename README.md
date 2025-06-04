@@ -58,3 +58,7 @@ https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga3207604e4b1a1758aa66acb
 rvecs	Output vector of rotation vectors (Rodrigues ) estimated for each pattern view (e.g. std::vector<cv::Mat>>). That is, each i-th rotation vector together with the corresponding i-th translation vector (see the next output parameter description) brings the calibration pattern from the object coordinate space (in which object points are specified) to the camera coordinate space. In more technical terms, the tuple of the i-th rotation and translation vector performs a change of basis from object coordinate space to camera coordinate space. Due to its duality, this tuple is equivalent to the position of the calibration pattern with respect to the camera coordinate space.
 tvecs	Output vector of translation vectors estimated for each pattern view, see parameter describtion above.
 """
+
+
+
+### cam0, cam1, cam2, cam3 --> cam2 intrisnics, z축 방향이 반대로 추정되는 이미지가 몇개 있어서 신뢰할 수 없음
