@@ -60,5 +60,3 @@ tvecs	Output vector of translation vectors estimated for each pattern view, see 
 """
 
 
-
-### cam0, cam1, cam2, cam3 --> cam2 intrisnics, z축 방향이 반대로 추정되는 이미지가 몇개 있어서 신뢰할 수 없음
