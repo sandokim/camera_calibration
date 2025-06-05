@@ -169,7 +169,7 @@ def main():
         img_vis = draw_axes(img, corners2, imgpts)
         img_resized = cv.resize(img_vis, window_size)
         cv.imshow(f'Pose - {cam_name}', img_resized)
-        cv.waitKey(1000)
+        cv.waitKey(500)
         cv.destroyAllWindows()
 
     mean_error = np.mean(list(cam_errors.values()))
