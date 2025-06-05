@@ -10,7 +10,7 @@ logger.setLevel(logging.INFO)
 
 formatter = logging.Formatter('%(asctime)s: %(message)s')
 
-file_handler = logging.FileHandler('./logs/camera_calibration.log', mode='w')
+file_handler = logging.FileHandler('./logs/camera_calibration_intrinsics.log', mode='w')
 file_handler.setFormatter(formatter)
 
 stream_handler = logging.StreamHandler()
