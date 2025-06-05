@@ -5,8 +5,8 @@ import glob
 import json
 import logging
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
+# ----------------- Logger 설정 -------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s: %(message)s')
@@ -17,11 +17,13 @@ stream_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
+# ----------------- 설정 -------------------
 CHECKERBOARD = (7, 4)
 real_world_distance = 30  # mm
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 window_size = (640, 480)
 
+# ----------------- 함수 정의 -------------------
 def draw_axes(img, corners, imgpts):
     corner = tuple(corners[0].ravel().astype(int))
     img = cv.line(img, corner, tuple(int(i) for i in imgpts[2].ravel()), (255, 0, 0), 3)
@@ -42,9 +44,17 @@ def extract_corners(img_path):
         logger.warning(f"Checkerboard not found: {img_path}")
         return None, None, img, gray
     corners_refined = cv.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
-    return corners_refined, corners, img, gray
+    return corners_refined, corners, img, gray, ret
 
 def compute_pose(objp, imgpts, mtx, dist):
+    '''
+    The cv::solvePnP() returns the rotation and the translation vectors that transform a 3D point expressed in the object coordinate frame to the camera coordinate frame, using different methods:
+    object(checkerboard) frame의 위치가 카메라 프레임에서 어디에 있는가?
+    cam0 in board frame -> T_board_to_cam0
+    cam1 in board frame -> T_board_to_cam1
+    cam2 in board frame -> T_board_to_cam2
+    cam3 in board frame -> T_board_to_cam3
+    '''
     ret, rvec, tvec = cv.solvePnP(objp, imgpts, mtx, dist)
     return rvec, tvec
 
@@ -57,14 +67,14 @@ def compose_transform(rvec, tvec):
 
 def get_object_points():
     objp = np.zeros((CHECKERBOARD[0]*CHECKERBOARD[1], 3), np.float32)
-    objp[:, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
-    objp *= real_world_distance
+    objp[:, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2) * real_world_distance
     return objp
 
-def plot_camera_poses(cam_poses, axis_length=45):
+
+def plot_camera_poses(cam_poses, board_pose=None, title="Camera & Checkerboard Poses", axis_length=100):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    colors = ['r', 'g', 'b']
+    cam_colors = ['r', 'g', 'b']  # X, Y, Z
 
     for cam_name, T in cam_poses.items():
         T = np.array(T)
@@ -73,86 +83,105 @@ def plot_camera_poses(cam_poses, axis_length=45):
 
         for i in range(3):
             axis_vec = R[:, i] * axis_length
-            ax.quiver(*origin, *axis_vec, color=colors[i], linewidth=2)
+            ax.quiver(*origin, *axis_vec, color=cam_colors[i], linewidth=3, alpha=0.9)
+        ax.text(*origin, cam_name, fontsize=10, color='k')
 
-        ax.text(*origin, cam_name, fontsize=10)
+    if board_pose is not None:
+        T = np.array(board_pose)
+        origin = T[:3, 3]
+        R = T[:3, :3]
+        board_colors = ['firebrick', 'seagreen', 'royalblue']
+        for i in range(3):
+            axis_vec = R[:, i] * axis_length
+            ax.quiver(*origin, *axis_vec, color=board_colors[i], linewidth=3, alpha=0.9)
+        ax.text(*origin, "checkerboard", fontsize=10, color='k')
+
+    axis_range = 600 
+    ax.set_xlim(-axis_range, axis_range)
+    ax.set_ylim(-axis_range, axis_range)
+    ax.set_zlim(-axis_range, axis_range)
 
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Y (mm)')
     ax.set_zlabel('Z (mm)')
-    ax.set_title('Camera Poses in cam0 Coordinate Frame')
-    ax.view_init(elev=20, azim=120)
+    ax.set_title(title)
+    ax.view_init(elev=30, azim=135)
     ax.grid(True)
+    ax.set_box_aspect([1, 1, 1])  # 1:1:1 비율 강제
     plt.tight_layout()
     plt.show()
 
+
+# ----------------- 메인 -------------------
 def main():
     base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/"
     cam_dirs = sorted([os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))])
     logger.info(f"Cam directories: {cam_dirs}")
-    
-    intrinsics_path = os.path.join(cam_dirs[0], "intrinsics.json")
-    mtx, dist = load_intrinsics(intrinsics_path)
-    
+
     objp = get_object_points()
     axis = np.float32([[real_world_distance, 0, 0],
                        [0, real_world_distance, 0],
                        [0, 0, real_world_distance]]).reshape(-1, 3)
 
-    ref_T = np.eye(4)
-    cam_poses = {}
-    cam_errors = []
-    
-    prev_T = ref_T
-    prev_corners, _, _, _ = extract_corners(glob.glob(os.path.join(cam_dirs[0], "*.jpg"))[0])
-    cam_poses[os.path.basename(cam_dirs[0])] = ref_T.tolist()
+    cam_poses = {} 
+    cam_errors = {}
 
-    for i in range(len(cam_dirs)):
-        cam_name = os.path.basename(cam_dirs[i])
-        img_path = glob.glob(os.path.join(cam_dirs[i], "*.jpg"))[0]
-        corners2, corners_raw, img, gray = extract_corners(img_path)
+    for i, cam_path in enumerate(cam_dirs):
+        cam_name = os.path.basename(cam_path)
+        intrinsics_path = os.path.join(cam_path, "intrinsics.json")
+        mtx, dist = load_intrinsics(intrinsics_path)
+        img_files = glob.glob(os.path.join(cam_path, "*.jpg"))
+        if not img_files:
+            logger.warning(f"No image found in {cam_path}")
+            continue
+
+        img_path = img_files[0]
+        print("img path: ", img_path)
+        corners2, _, img, gray, ret= extract_corners(img_path)
+        
+        # 체커보드 좌표축 2D 이미지에서 시각화
+        img = cv.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
+
         if corners2 is None:
             logger.warning(f"Skipping {cam_name} due to corner extraction failure.")
             continue
 
         rvec, tvec = compute_pose(objp, corners2, mtx, dist)
-        T_rel = compose_transform(rvec, tvec)
-
+        T_board_to_cami = compose_transform(rvec, tvec) 
+        T_cami_to_board = np.linalg.inv(T_board_to_cami)
+        
         if i == 0:
-            abs_T = np.eye(4)
+            cam_poses[cam_name] = np.eye(4).tolist()
+            T_cam0_to_board = T_cami_to_board
+            T_board_to_cam0 = T_board_to_cami # cam0 frame에서의 체커보드의 위치
         else:
-            abs_T = prev_T @ T_rel
+            T_cam0_to_cami = T_board_to_cami @ T_cam0_to_board
+            cam_poses[cam_name] = T_cam0_to_cami.tolist()
 
-        cam_poses[cam_name] = abs_T.tolist()
+        # 재투영 오차 계산
+        imgpoints2, _ = cv.projectPoints(objp, rvec, tvec, mtx, dist)
+        error = cv.norm(corners2, imgpoints2, cv.NORM_L2) / len(imgpoints2)
+        cam_errors[cam_name] = error
+        logger.info(f"[{cam_name}] Reprojection error: {error:.4f}")
 
-        # 시각화
+        # 체커보드 좌표축 2D 이미지에서 시각화
         imgpts, _ = cv.projectPoints(axis, rvec, tvec, mtx, dist)
         img_vis = draw_axes(img, corners2, imgpts)
         img_resized = cv.resize(img_vis, window_size)
         cv.imshow(f'Pose - {cam_name}', img_resized)
-        cv.waitKey(500)
+        cv.waitKey(1000)
         cv.destroyAllWindows()
 
-        # reprojection error 계산
-        imgpoints2, _ = cv.projectPoints(objp, rvec, tvec, mtx, dist)
-        error = cv.norm(corners2, imgpoints2, cv.NORM_L2) / len(imgpoints2)
-        cam_errors.append(error)
-        logger.info(f"[{cam_name}] Reprojection error: {error:.4f}")
-
-        prev_T = abs_T
-        prev_corners = corners2
-
-    mean_error = np.mean(cam_errors)
+    mean_error = np.mean(list(cam_errors.values()))
     logger.info(f"\nMean reprojection error across all cameras: {mean_error:.4f}")
 
-    # 결과 저장
     extrinsics_path = os.path.join(base_dir, "extrinsics.json")
     with open(extrinsics_path, "w") as f:
         json.dump(cam_poses, f, indent=4)
     logger.info(f"Extrinsics saved to: {extrinsics_path}")
 
-    # 카메라 포즈 시각화 함수 호출
-    plot_camera_poses(cam_poses)
-
+    plot_camera_poses(cam_poses, board_pose=T_board_to_cam0.tolist())    
+    
 if __name__ == "__main__":
     main()
+
