@@ -20,8 +20,16 @@
 - **목적:** COLMAP 형태의 카메라 파라미터 저장
 - **출력:** cameras.txt, images.txt, points3D.txt(empty)
 
+#### 4. sparse/0/ 폴더 생성 후 3.에서 출력한 cameras.txt, images.txt, points3D.txt(empty)를 복사
+COLMAP에서 Import Model로 sparse/0/ 폴더 선택하였으나 COLMAP Processing > Database management에서 Cameras와 Images가 모두 비어있음
 
-#### 4. COLMAP points3D.txt를 위한 cameras.txt, images.txt 활용 및 sparse 3D 모델 생성
+COLMAP은 .txt 파일 기반의 모델을 GUI에서 직접 사용하지 않습니다.
+
+대신 database.db를 직접 구성하거나 변환하여 사용하는 것이 유일한 방법입니다.
+
+GUI/CLI 모두 동일하게 database.db → 모든 이미지, 카메라, feature 정보 사용
+
+#### 5. COLMAP points3D.txt를 위한 cameras.txt, images.txt 활용 및 sparse 3D 모델 생성
 https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
 camera poses
 If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a cameras.txt, points3D.txt, and images.txt under a new folder:
