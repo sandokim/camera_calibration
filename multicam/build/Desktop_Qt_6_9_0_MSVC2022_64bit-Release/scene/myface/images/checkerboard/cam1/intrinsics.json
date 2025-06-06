@@ -1,4 +1,8 @@
 {
+    "resolution": [
+        540,
+        960
+    ],
     "camera_angle_x": 1.0357887793807754,
     "camera_angle_y": 0.617782777796978,
     "mtx": [

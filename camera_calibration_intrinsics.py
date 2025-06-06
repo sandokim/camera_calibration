@@ -128,7 +128,7 @@ def calibrate_camera(objpoints, imgpoints, gray):
 
 
 def main():
-    checkerboard_path = os.path.join("multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/cam2/")
+    checkerboard_path = os.path.join("multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/cam3/")
     logger.info(f'chessboard_path: {checkerboard_path}')
     objpoints, imgpoints = find_checkerboard_corners(checkerboard_path)
     # 첫 번째 이미지의 해상도로 이미지 모양 설정
@@ -155,11 +155,12 @@ def main():
     logger.info("calibration_error: {}".format(total_error))
     
     calibration_data = {
-    "camera_angle_x": fov_x,
-    "camera_angle_y": fov_y,
-    "mtx": mtx.tolist(), # intrinsics
-    "dist": dist.tolist(),
-    "calibration_error": total_error
+        "resolution": [H, W],
+        "camera_angle_x": fov_x,
+        "camera_angle_y": fov_y,
+        "mtx": mtx.tolist(), # intrinsics
+        "dist": dist.tolist(),
+        "calibration_error": total_error
     }
     logger.info(calibration_data)
     
