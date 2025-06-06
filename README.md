@@ -18,11 +18,21 @@
 #### 3. COLMAP 형태의 cameras.txt, images.txt로 저장
 - **입력:** intrinsics.json, extrinsics.json
 - **목적:** COLMAP 형태의 카메라 파라미터 저장
-- **출력:** cameras.txt, images.txt
+- **출력:** cameras.txt, images.txt, points3D.txt(empty)
 
 
 #### 4. COLMAP points3D.txt를 위한 cameras.txt, images.txt 활용 및 sparse 3D 모델 생성
-- **입력:** cameras.txt, images.txt
+https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
+camera poses
+If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a cameras.txt, points3D.txt, and images.txt under a new folder:
+
++── path/to/manually/created/sparse/model
+│   +── cameras.txt
+│   +── images.txt
+│   +── points3D.txt
+The points3D.txt file should be empty while every other line in the images.txt should also be empty, since the sparse features are computed, as described below. You can refer to this article for more information about the structure of a sparse model.
+
+- **입력:** cameras.txt, images.txt, 체커보드를 촬영한 멀티 카메라 세팅에서 촬영된 이미지
 - **목적:** COLMAP을 통한 3D 모델 생성
 - **출력:** points3D.txt
 

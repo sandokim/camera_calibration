@@ -28,9 +28,9 @@ def convert_to_colmap(base_dir):
 
     cameras_path = os.path.join(base_dir, "cameras.txt")
     images_path = os.path.join(base_dir, "images.txt")
+    points3D_path = os.path.join(base_dir, "points3D.txt")
 
     with open(cameras_path, "w") as cam_file, open(images_path, "w") as img_file:
-
         # === cameras.txt 헤더 ===
         cam_file.write("# Camera list with one line of data per camera:\n")
         cam_file.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
@@ -55,16 +55,22 @@ def convert_to_colmap(base_dir):
             R_wc = T[:3, :3]
             t_wc = T[:3, 3]
             r = R.from_matrix(R_wc)
-            qw, qx, qy, qz = r.as_quat()  # Already in x, y, z, w order
-            qw, qx, qy, qz = qw, qx, qy, qz  # for clarity
+            qw, qx, qy, qz = r.as_quat()
+            qw, qx, qy, qz = qw, qx, qy, qz  # 그대로 사용
 
             image_id = cam_id
             img_file.write(f"{image_id} {qw:.12f} {qx:.12f} {qy:.12f} {qz:.12f} {t_wc[0]:.12f} {t_wc[1]:.12f} {t_wc[2]:.12f} {cam_id} {cam_name}.jpg\n")
-            img_file.write("0 0 -1\n")  # dummy 2D point
+            img_file.write("\n")  # 빈 줄 (POINTS2D 없음)
 
             cam_id += 1
 
-    print("✅ cameras.txt / images.txt 생성 완료")
+    # === 빈 points3D.txt 생성 ===
+    with open(points3D_path, "w") as p3d_file:
+        p3d_file.write("# 3D point list with one line of data per point:\n")
+        p3d_file.write("#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[] as (IMAGE_ID, POINT2D_IDX)\n")
+        p3d_file.write("# Number of points: 0, mean track length: 0\n")
+
+    print("✅ cameras.txt / images.txt / points3D.txt (빈 구조) 생성 완료")
 
 if __name__ == "__main__":
     base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard"
