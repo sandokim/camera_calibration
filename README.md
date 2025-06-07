@@ -41,6 +41,11 @@ GUI/CLI 모두 동일하게 database.db → 모든 이미지, 카메라, feature
 
 The image reader can only take the parameters for a single camera. If you want to specify the parameters for multiple cameras, you would have to modify the SQLite database directly. This should be easy by modifying the scripts/python/database.py script.
 
+### poses_bounds.npy 생성
+https://github.com/Fyusion/LLFF
+
+python LLFF/imgs2poses.py LLFF/scene/KIST_llff
+
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
 https://github.com/colmap/colmap/issues/428
