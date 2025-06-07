@@ -1,4 +1,4 @@
-### ✅ convert_to_COLMAP_fmt.py (중복 intrinsics 통합 반영, sparse/dense 제거, bin 저장만)
+### ✅ convert_to_COLMAP_fmt.py (중복 intrinsics 통합 반영, sparse/dense 제거, bin 저장 + 텍스트 저장 유지)
 import json
 import os
 import sys
@@ -100,42 +100,62 @@ def convert_to_colmap(base_dir, colmap_exe):
     existing_cams = {}
     camera_id = 1
     image_id = 1
-    for cam_name in cam_dirs:
-        intr_path = os.path.join(base_dir, cam_name, "intrinsics.json")
-        w, h, fx, fy, cx, cy, *_ = load_intrinsics(intr_path)
-        params_tuple = (w, h, fx, fy, cx, cy)
 
-        if params_tuple in existing_cams:
-            cam_id = existing_cams[params_tuple]
-        else:
-            cam_id = camera_id
-            db.add_camera(
-                model=1,
-                width=w, height=h,
-                params=np.array([fx, fy, cx, cy]),
-                prior_focal_length=True,
-                camera_id=cam_id
+    cameras_path = os.path.join(base_dir, "cameras.txt")
+    images_path = os.path.join(base_dir, "images.txt")
+    points3D_path = os.path.join(base_dir, "points3D.txt")
+
+    with open(cameras_path, "w") as cam_file, open(images_path, "w") as img_file:
+        cam_file.write("# Camera list with one line of data per camera:\n")
+        cam_file.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
+
+        img_file.write("# Image list with two lines of data per image:\n")
+        img_file.write("#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
+        img_file.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
+
+        for cam_name in cam_dirs:
+            intr_path = os.path.join(base_dir, cam_name, "intrinsics.json")
+            w, h, fx, fy, cx, cy, *_ = load_intrinsics(intr_path)
+            params_tuple = (w, h, fx, fy, cx, cy)
+
+            if params_tuple in existing_cams:
+                cam_id = existing_cams[params_tuple]
+            else:
+                cam_id = camera_id
+                db.add_camera(
+                    model=1,
+                    width=w, height=h,
+                    params=np.array([fx, fy, cx, cy]),
+                    prior_focal_length=True,
+                    camera_id=cam_id
+                )
+                cam_file.write(f"{cam_id} PINHOLE {w} {h} {fx:.12f} {fy:.12f} {cx:.12f} {cy:.12f}\n")
+                existing_cams[params_tuple] = cam_id
+                camera_id += 1
+
+            T = np.array(extrinsics[cam_name])
+            R_wc = T[:3, :3]
+            t_wc = T[:3, 3]
+            qvec = R.from_matrix(R_wc).as_quat()
+            qw, qx, qy, qz = qvec[3], qvec[0], qvec[1], qvec[2]
+
+            image_name = f"{cam_name}.jpg"
+            db.execute(
+                "INSERT INTO images (image_id, name, camera_id, prior_qw, prior_qx, prior_qy, prior_qz, prior_tx, prior_ty, prior_tz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (image_id, image_name, cam_id, qw, qx, qy, qz, t_wc[0], t_wc[1], t_wc[2])
             )
-            existing_cams[params_tuple] = cam_id
-            camera_id += 1
+            img_file.write(f"{image_id} {qw:.12f} {qx:.12f} {qy:.12f} {qz:.12f} {t_wc[0]:.12f} {t_wc[1]:.12f} {t_wc[2]:.12f} {cam_id} {image_name}\n\n")
+            image_id += 1
 
-        T = np.array(extrinsics[cam_name])
-        R_wc = T[:3, :3]
-        t_wc = T[:3, 3]
-        qvec = R.from_matrix(R_wc).as_quat()
-        qw, qx, qy, qz = qvec[3], qvec[0], qvec[1], qvec[2]
-
-        image_name = f"{cam_name}.jpg"
-        db.execute(
-            "INSERT INTO images (image_id, name, camera_id, prior_qw, prior_qx, prior_qy, prior_qz, prior_tx, prior_ty, prior_tz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (image_id, image_name, cam_id, qw, qx, qy, qz, t_wc[0], t_wc[1], t_wc[2])
-        )
-        image_id += 1
+    with open(points3D_path, "w") as p3d_file:
+        p3d_file.write("# 3D point list with one line of data per point:\n")
+        p3d_file.write("#   POINT3D_ID, X, Y, Z, R, G, B, ERROR, TRACK[] as (IMAGE_ID, POINT2D_IDX)\n")
+        p3d_file.write("# Number of points: 0, mean track length: 0\n")
 
     db.commit()
     db.close()
 
-    print("✅ database.db 구성 완료")
+    print("✅ database.db / cameras.txt / images.txt / points3D.txt 구성 완료")
     run_feature_extractor(colmap_exe, database_path, undist_image_dir)
     run_model_converter(colmap_exe, base_dir)
 
