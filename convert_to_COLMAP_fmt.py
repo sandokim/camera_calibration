@@ -146,7 +146,7 @@ def convert_to_colmap(base_dir, colmap_exe):
 
     print("✅ cameras.txt / images.txt / points3D.txt / database.db 생성 완료")
     run_feature_extractor(colmap_exe, database_path, image_path)
-    run_model_converter(colmap_exe, base_dir)
+    # run_model_converter(colmap_exe, base_dir)
 
 if __name__ == "__main__":
     base_dir = r"C:/Users/maila/KHS/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard"
