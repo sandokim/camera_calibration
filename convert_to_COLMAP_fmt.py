@@ -1,4 +1,4 @@
-### ✅ convert_to_COLMAP_fmt.py (통합 + pose 반영 + schema 확장)
+### ✅ convert_to_COLMAP_fmt.py (통합 + pose 반영 + schema 확장 + matcher + triangulator)
 import json
 import os
 import sys
@@ -34,7 +34,7 @@ def run_feature_extractor(colmap_exe, database_path, image_path):
         "--ImageReader.camera_model", "PINHOLE",
         "--SiftExtraction.use_gpu", "1"
     ]
-    print("\U0001F680 Running COLMAP feature_extractor...")
+    print("🚀 Running COLMAP feature_extractor...")
     print("🛠️ Command:", " ".join(cmd))
     result = subprocess.run(" ".join(cmd), capture_output=True, text=True, shell=True)
     if result.returncode != 0:
@@ -42,6 +42,22 @@ def run_feature_extractor(colmap_exe, database_path, image_path):
         print(result.stderr)
     else:
         print("✅ COLMAP feature_extractor 성공")
+        print(result.stdout)
+
+def run_exhaustive_matcher(colmap_exe, database_path):
+    cmd = [
+        colmap_exe, "exhaustive_matcher",
+        "--database_path", database_path,
+        "--SiftMatching.use_gpu", "1"
+    ]
+    print("🚀 Running COLMAP exhaustive_matcher...")
+    print("🛠️ Command:", " ".join(cmd))
+    result = subprocess.run(" ".join(cmd), capture_output=True, text=True, shell=True)
+    if result.returncode != 0:
+        print("❌ COLMAP exhaustive_matcher 실패:")
+        print(result.stderr)
+    else:
+        print("✅ COLMAP exhaustive_matcher 성공")
         print(result.stdout)
 
 def run_model_converter(colmap_exe, base_dir):
@@ -53,7 +69,7 @@ def run_model_converter(colmap_exe, base_dir):
         "--output_path", sparse_dir,
         "--output_type", "BIN"
     ]
-    print("\U0001F680 Running COLMAP model_converter...")
+    print("🚀 Running COLMAP model_converter...")
     print("🛠️ Command:", " ".join(cmd))
     result = subprocess.run(" ".join(cmd), capture_output=True, text=True, shell=True)
     if result.returncode != 0:
@@ -146,6 +162,7 @@ def convert_to_colmap(base_dir, colmap_exe):
 
     print("✅ cameras.txt / images.txt / points3D.txt / database.db 생성 완료")
     run_feature_extractor(colmap_exe, database_path, image_path)
+    run_exhaustive_matcher(colmap_exe, database_path)
     run_model_converter(colmap_exe, base_dir)
 
 if __name__ == "__main__":
