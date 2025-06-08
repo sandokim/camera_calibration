@@ -104,15 +104,15 @@ def convert_to_colmap(base_path, colmap_exe):
     db.execute("ALTER TABLE images ADD COLUMN prior_ty REAL")
     db.execute("ALTER TABLE images ADD COLUMN prior_tz REAL")
 
-    existing_cams = {}
-    camera_id = 1
-    image_id = 1
-
     manually_created_sparse_path = os.path.join(base_path, "manually/created/sparse", "0")
     os.makedirs(manually_created_sparse_path, exist_ok=True)
     cameras_path = os.path.join(manually_created_sparse_path, "cameras.txt")
     images_txt_path = os.path.join(manually_created_sparse_path, "images.txt")
     points3D_path = os.path.join(manually_created_sparse_path, "points3D.txt")
+    
+    existing_cams = {}
+    camera_id = 1
+    image_id = 1
 
     with open(cameras_path, "w") as cam_file, open(images_txt_path, "w") as img_file:
         cam_file.write("# Camera list with one line of data per camera:\n")
