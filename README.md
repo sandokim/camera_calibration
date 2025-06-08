@@ -46,6 +46,46 @@ https://github.com/Fyusion/LLFF
 
 python LLFF/imgs2poses.py LLFF/scene/KIST_llff
 
+### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
+undistortion이 아직 안된 이미지들을을 -> \LLFF\scene\KIST_llff\input 에 넣고
+\LLFF\scene\KIST_llff\distorted 폴더 안에 database.db와 triangulated 폴더 안에 sparse/0 폴더를 복사
+<location>
+|---input
+|   |---<image 0>
+|   |---<image 1>
+|   |---...
+|---distorted
+    |---database.db
+    |---sparse
+        |---0
+            |---...
+
+다음을 실행하면 undistorted된 이미지들이 images 폴더에 생성됨
+```
+python convert.py -s LLFF\scene\KIST_llff --skip_matching
+```
+단 각 카메라마다 intrinsics가 달랐어서, undistortion된 이미지들의 사이즈가 다르게 생성됨
+
+cam0.jpg, cam1.jpg, cam2.jpg, cam3.jpg의 이미지 사이즈가 다르게 생성됨, cam3.jpg는 intrinsics가 부정확한지 너무 crop이 국소적으로 되어 이미지가 만들어짐 (960x540->192x108)
+
+
+If you have your own COLMAP dataset without undistortion (e.g., using OPENCV camera), you can try to just run the last part of the script: Put the images in input and the COLMAP info in a subdirectory distorted:
+
+<location>
+|---input
+|   |---<image 0>
+|   |---<image 1>
+|   |---...
+|---distorted
+    |---database.db
+    |---sparse
+        |---0
+            |---...
+
+Then run
+
+python convert.py -s <location> --skip_matching [--resize] #If not resizing, ImageMagick is not needed
+
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
 https://github.com/colmap/colmap/issues/428

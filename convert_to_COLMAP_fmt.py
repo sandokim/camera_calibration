@@ -62,7 +62,7 @@ def run_point_triangulator(colmap_exe, database_path, image_path, input_path, ou
         "--image_path", image_path,
         "--input_path", input_path,
         "--output_path", output_path,
-        "--Mapper.tri_ignore_two_view_tracks", "0"
+        "--Mapper.tri_ignore_two_view_tracks", "0" # 2-view에서만 match되는 것도 포함
     ], "point_triangulator")
 
 def export_model_to_txt(colmap_exe, input_path):
