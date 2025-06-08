@@ -51,6 +51,14 @@ python LLFF/imgs2poses.py LLFF/scene/KIST_llff
 https://github.com/colmap/colmap/issues/428
 
 
+# **Reconstruct sparse/dense model from known camera poses**
+keypoints와 matches가 제대로 불러와지지 않아서 triangulation이 안되는 문제 해결중
+
+
+
+
+
+
 ### 5. COLMAP points3D.txt를 위한 cameras.txt, images.txt 활용 및 sparse 3D 모델 생성
 - **입력:** cameras.txt, images.txt, 체커보드를 촬영한 멀티 카메라 세팅에서 촬영된 이미지
 - **목적:** COLMAP을 통한 3D 모델 생성

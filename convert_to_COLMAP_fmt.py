@@ -1,4 +1,3 @@
-### ✅ convert_to_COLMAP_fmt.py (중복 intrinsics 통합 반영, sparse/dense 제거, bin 저장 + 텍스트 저장 유지)
 import json
 import os
 import sys
@@ -15,7 +14,7 @@ def load_intrinsics(path):
     with open(path, 'r') as f:
         data = json.load(f)
     mtx = np.array(data["mtx"])
-    dist = np.array(data.get("dist", [0, 0, 0, 0, 0]))
+    dist = np.array(data.get("dist", [0, 0, 0, 0, 0])).flatten()
     h, w = data.get("resolution", (None, None))
     if h is None or w is None:
         raise ValueError("resolution not provided in intrinsics.json")
@@ -29,8 +28,8 @@ def load_extrinsics(path):
 
 def run_cmd(colmap_exe, args, desc):
     cmd = [colmap_exe] + args
-    print(f"🚀 Running COLMAP {desc}...")
-    print("🛠️ Command:", " ".join(cmd))
+    print(f"\U0001F680 Running COLMAP {desc}...")
+    print("\U0001F6E0️ Command:", " ".join(cmd))
     result = subprocess.run(" ".join(cmd), capture_output=True, text=True, shell=True)
     if result.returncode != 0:
         print(f"❌ COLMAP {desc} 실패:")
@@ -45,44 +44,52 @@ def run_feature_extractor(colmap_exe, database_path, image_path):
         "--database_path", database_path,
         "--image_path", image_path,
         "--ImageReader.single_camera", "0",
-        "--ImageReader.camera_model", "PINHOLE",
+        "--ImageReader.camera_model", "OPENCV",
         "--SiftExtraction.use_gpu", "1"
     ], "feature_extractor")
 
-def run_model_converter(colmap_exe, base_dir):
-    sparse_dir = os.path.join(base_dir, "sparse", "0")
-    os.makedirs(sparse_dir, exist_ok=True)
+def run_exhaustive_matcher(colmap_exe, database_path):
     run_cmd(colmap_exe, [
-        "model_converter",
-        "--input_path", base_dir,
-        "--output_path", sparse_dir,
-        "--output_type", "BIN"
-    ], "model_converter")
+        "exhaustive_matcher",
+        "--database_path", database_path
+    ], "exhaustive_matcher")
 
-def undistort_images(base_dir, image_dir, output_dir):
-    cam_dirs = sorted([d for d in os.listdir(base_dir) if d.startswith("cam") and os.path.isdir(os.path.join(base_dir, d))])
-    os.makedirs(output_dir, exist_ok=True)
-    for cam_name in cam_dirs:
-        intr_path = os.path.join(base_dir, cam_name, "intrinsics.json")
-        w, h, fx, fy, cx, cy, K, dist = load_intrinsics(intr_path)
-        img_path = os.path.join(image_dir, f"{cam_name}.jpg")
-        img = cv2.imread(img_path)
-        if img is None:
-            continue
-        undistorted = cv2.undistort(img, K, dist)
-        cv2.imwrite(os.path.join(output_dir, f"{cam_name}.jpg"), undistorted)
-    print("✅ Undistorted images 저장 완료")
+def run_point_triangulator(colmap_exe, database_path, image_path, input_path, output_path):
+    run_cmd(colmap_exe, [
+        "point_triangulator",
+        "--database_path", database_path,
+        "--image_path", image_path,
+        "--input_path", input_path,
+        "--output_path", output_path
+    ], "point_triangulator")
 
-def convert_to_colmap(base_dir, colmap_exe):
-    cam_dirs = sorted([d for d in os.listdir(base_dir) if d.startswith("cam") and os.path.isdir(os.path.join(base_dir, d))])
-    extrinsics = load_extrinsics(os.path.join(base_dir, "extrinsics.json"))
+def inspect_database(db_path):
+    db = COLMAPDatabase.connect(db_path)
 
-    database_path = os.path.join(base_dir, "database.db")
-    orig_image_dir = os.path.join(base_dir, "images")
-    undist_image_dir = os.path.join(base_dir, "images_undistorted")
-    os.makedirs(undist_image_dir, exist_ok=True)
+    # 이미지 목록 확인
+    images = db.execute("SELECT image_id, name FROM images").fetchall()
+    print("\U0001F4F8 Registered images:")
+    for img_id, name in images:
+        print(f"  ID: {img_id}, Name: {name}")
 
-    undistort_images(base_dir, orig_image_dir, undist_image_dir)
+    # 키포인트 개수 확인
+    keypoints_info = db.execute("SELECT COUNT(*), image_id FROM keypoints GROUP BY image_id").fetchall()
+    print("\n\U0001F50D Keypoints per image:")
+    for count, image_id in keypoints_info:
+        print(f"  Image ID {image_id}: {count} keypoints")
+
+    # 매칭 쌍 개수 확인
+    match_pairs = db.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
+    print(f"\n\U0001F517 Total match pairs: {match_pairs}")
+
+    db.close()
+
+def convert_to_colmap(base_path, colmap_exe):
+    cam_dirs = sorted([d for d in os.listdir(base_path) if d.startswith("cam") and os.path.isdir(os.path.join(base_path, d))])
+    extrinsics = load_extrinsics(os.path.join(base_path, "extrinsics.json"))
+
+    database_path = os.path.join(base_path, "database.db")
+    images_path = os.path.join(base_path, "images")
 
     if os.path.exists(database_path):
         os.remove(database_path)
@@ -101,11 +108,13 @@ def convert_to_colmap(base_dir, colmap_exe):
     camera_id = 1
     image_id = 1
 
-    cameras_path = os.path.join(base_dir, "cameras.txt")
-    images_path = os.path.join(base_dir, "images.txt")
-    points3D_path = os.path.join(base_dir, "points3D.txt")
+    manually_created_sparse_path = os.path.join(base_path, "manually/created/sparse", "0")
+    os.makedirs(manually_created_sparse_path, exist_ok=True)
+    cameras_path = os.path.join(manually_created_sparse_path, "cameras.txt")
+    images_txt_path = os.path.join(manually_created_sparse_path, "images.txt")
+    points3D_path = os.path.join(manually_created_sparse_path, "points3D.txt")
 
-    with open(cameras_path, "w") as cam_file, open(images_path, "w") as img_file:
+    with open(cameras_path, "w") as cam_file, open(images_txt_path, "w") as img_file:
         cam_file.write("# Camera list with one line of data per camera:\n")
         cam_file.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
 
@@ -114,22 +123,26 @@ def convert_to_colmap(base_dir, colmap_exe):
         img_file.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
 
         for cam_name in cam_dirs:
-            intr_path = os.path.join(base_dir, cam_name, "intrinsics.json")
-            w, h, fx, fy, cx, cy, *_ = load_intrinsics(intr_path)
-            params_tuple = (w, h, fx, fy, cx, cy)
+            intr_path = os.path.join(base_path, cam_name, "intrinsics.json")
+            w, h, fx, fy, cx, cy, _, dist = load_intrinsics(intr_path)
+            if dist.size < 4:
+                raise ValueError(f"distortion 계수 4개 이상 필요 (k1, k2, p1, p2). 현재: {dist}")
+            k1, k2, p1, p2 = dist[:4]
+            params_tuple = (w, h, fx, fy, cx, cy, k1, k2, p1, p2)
 
             if params_tuple in existing_cams:
                 cam_id = existing_cams[params_tuple]
             else:
                 cam_id = camera_id
+                model = 4  # OPENCV
                 db.add_camera(
-                    model=1,
+                    model=model,
                     width=w, height=h,
-                    params=np.array([fx, fy, cx, cy]),
+                    params=np.array([fx, fy, cx, cy, k1, k2, p1, p2]),
                     prior_focal_length=True,
                     camera_id=cam_id
                 )
-                cam_file.write(f"{cam_id} PINHOLE {w} {h} {fx:.12f} {fy:.12f} {cx:.12f} {cy:.12f}\n")
+                cam_file.write(f"{cam_id} OPENCV {w} {h} {fx:.12f} {fy:.12f} {cx:.12f} {cy:.12f} {k1:.12f} {k2:.12f} {p1:.12f} {p2:.12f}\n")
                 existing_cams[params_tuple] = cam_id
                 camera_id += 1
 
@@ -156,10 +169,16 @@ def convert_to_colmap(base_dir, colmap_exe):
     db.close()
 
     print("✅ database.db / cameras.txt / images.txt / points3D.txt 구성 완료")
-    run_feature_extractor(colmap_exe, database_path, undist_image_dir)
-    run_model_converter(colmap_exe, base_dir)
+    run_feature_extractor(colmap_exe, database_path, images_path)
+    run_exhaustive_matcher(colmap_exe, database_path)
+
+    inspect_database(database_path)
+
+    triangulated_path = os.path.join(base_path, "triangulated", "sparse", "0")
+    os.makedirs(triangulated_path, exist_ok=True)
+    run_point_triangulator(colmap_exe, database_path, images_path, manually_created_sparse_path, triangulated_path)
 
 if __name__ == "__main__":
-    base_dir = r"C:/Users/maila/KHS/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard"
+    base_path = r"C:/Users/maila/KHS/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard"
     colmap_exe = r"C:/Users/maila/KHS/COLMAP-3.9.1-windows-cuda/COLMAP.bat"
-    convert_to_colmap(base_dir, colmap_exe)
+    convert_to_colmap(base_path, colmap_exe)
