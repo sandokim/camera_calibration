@@ -45,7 +45,8 @@ def run_feature_extractor(colmap_exe, database_path, image_path):
         "--image_path", image_path,
         "--ImageReader.single_camera", "0",
         "--ImageReader.camera_model", "OPENCV",
-        "--SiftExtraction.use_gpu", "1"
+        "--SiftExtraction.use_gpu", "1",
+        "--SiftExtraction.max_num_features", "8192"
     ], "feature_extractor")
 
 def run_exhaustive_matcher(colmap_exe, database_path):
@@ -60,28 +61,30 @@ def run_point_triangulator(colmap_exe, database_path, image_path, input_path, ou
         "--database_path", database_path,
         "--image_path", image_path,
         "--input_path", input_path,
-        "--output_path", output_path
+        "--output_path", output_path,
+        "--Mapper.tri_ignore_two_view_tracks", "0"
     ], "point_triangulator")
+
+def export_model_to_txt(colmap_exe, input_path):
+    run_cmd(colmap_exe, [
+        "model_converter",
+        "--input_path", input_path,
+        "--output_path", input_path,
+        "--output_type", "TXT"
+    ], "model_converter (BIN → TXT in-place)")
 
 def inspect_database(db_path):
     db = COLMAPDatabase.connect(db_path)
-
-    # 이미지 목록 확인
     images = db.execute("SELECT image_id, name FROM images").fetchall()
     print("\U0001F4F8 Registered images:")
     for img_id, name in images:
         print(f"  ID: {img_id}, Name: {name}")
-
-    # 키포인트 개수 확인
     keypoints_info = db.execute("SELECT COUNT(*), image_id FROM keypoints GROUP BY image_id").fetchall()
     print("\n\U0001F50D Keypoints per image:")
     for count, image_id in keypoints_info:
         print(f"  Image ID {image_id}: {count} keypoints")
-
-    # 매칭 쌍 개수 확인
     match_pairs = db.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
     print(f"\n\U0001F517 Total match pairs: {match_pairs}")
-
     db.close()
 
 def convert_to_colmap(base_path, colmap_exe):
@@ -109,7 +112,7 @@ def convert_to_colmap(base_path, colmap_exe):
     cameras_path = os.path.join(manually_created_sparse_path, "cameras.txt")
     images_txt_path = os.path.join(manually_created_sparse_path, "images.txt")
     points3D_path = os.path.join(manually_created_sparse_path, "points3D.txt")
-    
+
     existing_cams = {}
     camera_id = 1
     image_id = 1
@@ -117,7 +120,6 @@ def convert_to_colmap(base_path, colmap_exe):
     with open(cameras_path, "w") as cam_file, open(images_txt_path, "w") as img_file:
         cam_file.write("# Camera list with one line of data per camera:\n")
         cam_file.write("#   CAMERA_ID, MODEL, WIDTH, HEIGHT, PARAMS[]\n")
-
         img_file.write("# Image list with two lines of data per image:\n")
         img_file.write("#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
         img_file.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
@@ -171,12 +173,12 @@ def convert_to_colmap(base_path, colmap_exe):
     print("✅ database.db / cameras.txt / images.txt / points3D.txt 구성 완료")
     run_feature_extractor(colmap_exe, database_path, images_path)
     run_exhaustive_matcher(colmap_exe, database_path)
-
     inspect_database(database_path)
 
     triangulated_path = os.path.join(base_path, "triangulated", "sparse", "0")
     os.makedirs(triangulated_path, exist_ok=True)
     run_point_triangulator(colmap_exe, database_path, images_path, manually_created_sparse_path, triangulated_path)
+    export_model_to_txt(colmap_exe, triangulated_path)
 
 if __name__ == "__main__":
     base_path = r"C:/Users/maila/KHS/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard"
