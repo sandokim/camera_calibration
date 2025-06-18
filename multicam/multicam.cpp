@@ -141,18 +141,18 @@ void multicam::saveFrames()
             qWarning() << "[ERROR] 개별 저장 실패:" << camFilePath;
         }
 
-        // 경로 2: input 공통 폴더 (파일명: camX_타임스탬프.jpg)
-        QString inputFilePath = QString("%1/cam%2_%3.jpg")
-                                    .arg(inputDirPath)
-                                    .arg(i)
-                                    .arg(timestamp);
-        bool successInput = cv::imwrite(inputFilePath.toStdString(), frames[i]);
+        // // 경로 2: input 공통 폴더 (파일명: camX_타임스탬프.jpg)
+        // QString inputFilePath = QString("%1/cam%2_%3.jpg")
+        //                             .arg(inputDirPath)
+        //                             .arg(i)
+        //                             .arg(timestamp);
+        // bool successInput = cv::imwrite(inputFilePath.toStdString(), frames[i]);
 
-        if (successInput) {
-            qDebug() << "[SAVE] input 저장 완료:" << inputFilePath;
-        } else {
-            qWarning() << "[ERROR] input 저장 실패:" << inputFilePath;
-        }
+        // if (successInput) {
+        //     qDebug() << "[SAVE] input 저장 완료:" << inputFilePath;
+        // } else {
+        //     qWarning() << "[ERROR] input 저장 실패:" << inputFilePath;
+        // }
     }
 }
 
