@@ -119,34 +119,40 @@ void multicam::saveFrames()
 {
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
 
-    // 🎯 확정된 절대 경로
-    QString basePath = "C:/Users/Kang/Desktop/camera_calibration/multicam/scene/myface/images";
-    QDir().mkpath(basePath + "/input");
+    // 공통 input 디렉토리 생성
+    QString inputDirPath = "./scene/myface/images/input";
+    QDir().mkpath(inputDirPath);
 
     for (int i = 0; i < frames.size(); ++i) {
-        QString camDirPath = QString("%1/cam%2").arg(basePath).arg(i);
+        // 개별 카메라 폴더 경로 생성
+        QString camDirPath = QString("./scene/myface/images/cam%1").arg(i);
         QDir().mkpath(camDirPath);
 
+        // 파일명 정의
         QString fileName = QString("%1.jpg").arg(timestamp);
 
+        // 경로 1: cam 개별 폴더
         QString camFilePath = QString("%1/%2").arg(camDirPath, fileName);
         bool successCam = cv::imwrite(camFilePath.toStdString(), frames[i]);
 
-        if (successCam)
-            qDebug() << "[SAVE] cam 저장 완료:" << camFilePath;
-        else
-            qWarning() << "[ERROR] cam 저장 실패:" << camFilePath;
+        if (successCam) {
+            qDebug() << "[SAVE] 개별 저장 완료:" << camFilePath;
+        } else {
+            qWarning() << "[ERROR] 개별 저장 실패:" << camFilePath;
+        }
 
-        QString inputFilePath = QString("%1/input/cam%2_%3.jpg")
-                                    .arg(basePath)
+        // 경로 2: input 공통 폴더 (파일명: camX_타임스탬프.jpg)
+        QString inputFilePath = QString("%1/cam%2_%3.jpg")
+                                    .arg(inputDirPath)
                                     .arg(i)
                                     .arg(timestamp);
         bool successInput = cv::imwrite(inputFilePath.toStdString(), frames[i]);
 
-        if (successInput)
+        if (successInput) {
             qDebug() << "[SAVE] input 저장 완료:" << inputFilePath;
-        else
+        } else {
             qWarning() << "[ERROR] input 저장 실패:" << inputFilePath;
+        }
     }
 }
 
