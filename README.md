@@ -15,7 +15,8 @@
   - cam0를 reference로 삼고 나머지 카메라들의 외부 파라미터 계산
   - extrinsics.json으로 카메라 포즈 저장 
 
-checkerboard로 구한 extrinsics와 intrinsics를 다음과 같이 복사하고 checkerboard 폴더 이동
+checkerboard로 구한 extrinsics와 intrinsics를 다음과 같이 복사하고,
+scene/face/images/camX에 들어있는 image의 이름을 extrinsics.json에 맞게 수정
 
 ```python
 +── scene/myface/images
@@ -63,6 +64,15 @@ checkerboard로 구한 extrinsics와 intrinsics를 다음과 같이 복사하고
 │   │   │   +── cam3_checkerboard_img2.jpg
 │   │   │   ...
 │   │   │   +── intrinsics.json
+│   │   +── multicapture
+│   │   │   +── cam0
+│   │   │   │   +── cam0_checkerborard_img_x.jpg
+│   │   │   +── cam1
+│   │   │   │   +── cam1_checkerborard_img_x.jpg
+│   │   │   +── cam2
+│   │   │   │   +── cam2_checkerborard_img_x.jpg
+│   │   │   +── cam3
+│   │   │   │   +── cam3_checkerborard_img_x.jpg
 │   │   +── extrinsics.json
 │   │   +── other_scene_images
 ```

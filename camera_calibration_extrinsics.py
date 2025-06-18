@@ -114,7 +114,7 @@ def plot_camera_poses(cam_poses, board_pose=None, title="Camera & Checkerboard P
 
 # ----------------- 메인 -------------------
 def main():
-    base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/4_camera_calib_data/checkerboard"
+    base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/4_camera_calib_data/checkerboard/multicapture"
     cam_dirs = sorted([os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))])
     logger.info(f"Cam directories: {cam_dirs}")
 

@@ -88,11 +88,11 @@ def inspect_database(db_path):
     db.close()
 
 def convert_to_colmap(base_path, colmap_exe):
-    cam_dirs = sorted([d for d in os.listdir(base_path) if d.startswith("cam") and os.path.isdir(os.path.join(base_path, d))])
     extrinsics = load_extrinsics(os.path.join(base_path, "extrinsics.json"))
 
     database_path = os.path.join(base_path, "database.db")
     images_path = os.path.join(base_path, "images")
+    cam_dirs = sorted([os.listdir(os.path.join(images_path, d))[0] for d in os.listdir(images_path) if d.startswith("cam") and os.path.isdir(os.path.join(images_path, d))])
 
     if os.path.exists(database_path):
         os.remove(database_path)
@@ -125,7 +125,7 @@ def convert_to_colmap(base_path, colmap_exe):
         img_file.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
 
         for cam_name in cam_dirs:
-            intr_path = os.path.join(base_path, cam_name, "intrinsics.json")
+            intr_path = os.path.join(images_path, cam_name.split("_")[0], "intrinsics.json")
             w, h, fx, fy, cx, cy, _, dist = load_intrinsics(intr_path)
             if dist.size < 4:
                 raise ValueError(f"distortion 계수 4개 이상 필요 (k1, k2, p1, p2). 현재: {dist}")
