@@ -1,9 +1,0 @@
-# ninja log v6
-12	408	7719396888891120	multicam_autogen/timestamp	8834600ac2776208
-12	408	7719396888891120	multicam_autogen/mocs_compilation.cpp	8834600ac2776208
-12	408	7719396888891120	C:/Users/Kang/Desktop/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Debug/multicam_autogen/timestamp	8834600ac2776208
-12	408	7719396888891120	C:/Users/Kang/Desktop/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Debug/multicam_autogen/mocs_compilation.cpp	8834600ac2776208
-414	2366	7719396889530930	CMakeFiles/multicam.dir/main.cpp.obj	aa09ae1f1490ec35
-412	2414	7719396889507769	CMakeFiles/multicam.dir/multicam_autogen/mocs_compilation.cpp.obj	79c51c55a59068b
-417	3469	7719396889551643	CMakeFiles/multicam.dir/multicam.cpp.obj	a41064505d0a1434
-3469	3772	7719396920082939	multicam.exe	90f81ff9eaba06aa
