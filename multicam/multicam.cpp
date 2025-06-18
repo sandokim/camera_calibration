@@ -119,40 +119,42 @@ void multicam::saveFrames()
 {
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
 
-    // 공통 input 디렉토리 생성
-    QString inputDirPath = "./scene/myface/images/input";
-    QDir().mkpath(inputDirPath);
+    // 실행 파일 위치 → build/.../Release 까지임
+    QString execPath = QCoreApplication::applicationDirPath();
+
+    // 위로 3단계 올라가서 source 루트 디렉토리로 이동 (multicam/)
+    QDir rootDir(execPath);
+    rootDir.cdUp();  // -> Desktop_Qt_6_9...
+    rootDir.cdUp();  // -> build
+    rootDir.cdUp();  // -> multicam ← 우리가 원하는 프로젝트 루트
+
+    QString basePath = rootDir.absolutePath() + "/scene/myface/images";
+    QDir().mkpath(basePath + "/input");
 
     for (int i = 0; i < frames.size(); ++i) {
-        // 개별 카메라 폴더 경로 생성
-        QString camDirPath = QString("./scene/myface/images/cam%1").arg(i);
+        QString camDirPath = QString("%1/cam%2").arg(basePath).arg(i);
         QDir().mkpath(camDirPath);
 
-        // 파일명 정의
         QString fileName = QString("%1.jpg").arg(timestamp);
 
-        // 경로 1: cam 개별 폴더
         QString camFilePath = QString("%1/%2").arg(camDirPath, fileName);
         bool successCam = cv::imwrite(camFilePath.toStdString(), frames[i]);
 
-        if (successCam) {
+        if (successCam)
             qDebug() << "[SAVE] 개별 저장 완료:" << camFilePath;
-        } else {
+        else
             qWarning() << "[ERROR] 개별 저장 실패:" << camFilePath;
-        }
 
-        // 경로 2: input 공통 폴더 (파일명: camX_타임스탬프.jpg)
-        QString inputFilePath = QString("%1/cam%2_%3.jpg")
-                                    .arg(inputDirPath)
+        QString inputFilePath = QString("%1/input/cam%2_%3.jpg")
+                                    .arg(basePath)
                                     .arg(i)
                                     .arg(timestamp);
         bool successInput = cv::imwrite(inputFilePath.toStdString(), frames[i]);
 
-        if (successInput) {
+        if (successInput)
             qDebug() << "[SAVE] input 저장 완료:" << inputFilePath;
-        } else {
+        else
             qWarning() << "[ERROR] input 저장 실패:" << inputFilePath;
-        }
     }
 }
 
