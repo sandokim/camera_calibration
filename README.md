@@ -32,10 +32,13 @@ https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-came
 camera poses
 If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a cameras.txt, points3D.txt, and images.txt under a new folder:
 
+```python
 +── path/to/manually/created/sparse/model
 │   +── cameras.txt
 │   +── images.txt
 │   +── points3D.txt
+```
+
 The points3D.txt file should be empty while every other line in the images.txt should also be empty, since the sparse features are computed, as described below. You can refer to this article for more information about the structure of a sparse model.
 
 #### COLMAP에서 Import Model로 sparse/0/ 폴더 선택하였으나 COLMAP Processing > Database management에서 Cameras와 Images가 모두 비어있음
@@ -56,6 +59,7 @@ python LLFF/imgs2poses.py LLFF/scene/KIST_llff
 ### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
 undistortion이 아직 안된 이미지들을을 -> \LLFF\scene\KIST_llff\input 에 넣고
 \LLFF\scene\KIST_llff\distorted 폴더 안에 database.db와 triangulated 폴더 안에 sparse/0 폴더를 복사
+```python
 <location>
 |---input
 |   |---<image 0>
@@ -66,6 +70,7 @@ undistortion이 아직 안된 이미지들을을 -> \LLFF\scene\KIST_llff\input 
     |---sparse
         |---0
             |---...
+```
 
 다음을 실행하면 undistorted된 이미지들이 images 폴더에 생성됨
 ```
@@ -78,6 +83,7 @@ cam0.jpg, cam1.jpg, cam2.jpg, cam3.jpg의 이미지 사이즈가 다르게 생�
 
 If you have your own COLMAP dataset without undistortion (e.g., using OPENCV camera), you can try to just run the last part of the script: Put the images in input and the COLMAP info in a subdirectory distorted:
 
+```python
 <location>
 |---input
 |   |---<image 0>
@@ -88,6 +94,7 @@ If you have your own COLMAP dataset without undistortion (e.g., using OPENCV cam
     |---sparse
         |---0
             |---...
+```
 
 Then run
 
