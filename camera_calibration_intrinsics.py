@@ -118,7 +118,7 @@ def find_checkerboard_axes(checkerboard_path, mtx, dist):
             # Resize the image if needed
             img_resized = cv.resize(img, window_size)
             cv.imshow('chessboard', img_resized)
-            cv.waitKey(100)
+            cv.waitKey(500)
 
         cv.destroyAllWindows()
     
@@ -128,7 +128,7 @@ def calibrate_camera(objpoints, imgpoints, gray):
 
 
 def main():
-    checkerboard_path = os.path.join("multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/cam3/")
+    checkerboard_path = os.path.join("multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/cam2/")
     logger.info(f'chessboard_path: {checkerboard_path}')
     objpoints, imgpoints = find_checkerboard_corners(checkerboard_path)
     # 첫 번째 이미지의 해상도로 이미지 모양 설정

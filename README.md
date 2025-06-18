@@ -13,7 +13,14 @@
 - **출력:**
   - PnP 알고리즘을 통해 체커보드 좌표계(world frame)에서 카메라 좌표계(camera frame)로의 변환 행렬 계산
   - cam0를 reference로 삼고 나머지 카메라들의 외부 파라미터 계산
-  - extrinsics.json으로 카메라 포즈 저장
+  - extrinsics.json으로 카메라 포즈 저장 -> scene/myface/images/checkerboard -> scene/myface/images에 복사
++── scene/myface/images
+│   +── cam0
+│   +── cam1
+│   +── cam2
+│   +── cam3
+│   +── extrinsics.json
+
 
 ### 3. COLMAP 형태의 cameras.txt, images.txt로 저장
 - **입력:** intrinsics.json, extrinsics.json
