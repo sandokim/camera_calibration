@@ -13,14 +13,51 @@
 - **출력:**
   - PnP 알고리즘을 통해 체커보드 좌표계(world frame)에서 카메라 좌표계(camera frame)로의 변환 행렬 계산
   - cam0를 reference로 삼고 나머지 카메라들의 외부 파라미터 계산
-  - extrinsics.json으로 카메라 포즈 저장 -> scene/myface/images/checkerboard -> scene/myface/images에 복사
+  - extrinsics.json으로 카메라 포즈 저장 
+
+checkerboard로 구한 extrinsics와 intrinsics를 다음과 같이 복사
+ 
 ```python
 +── scene/myface/images
 │   +── cam0
+│   │   +── cam0_rgb_img.jpg
+│   │   +── intrinsics.json
 │   +── cam1
+│   │   +── cam1_rgb_img.jpg
+│   │   +── intrinsics.json
 │   +── cam2
+│   │   +── cam2_rgb_img.jpg
+│   │   +── intrinsics.json
 │   +── cam3
+│   │   +── cam3_rgb_img.jpg
+│   │   +── intrinsics.json
 │   +── extrinsics.json
+│   +── checkerboard
+│   │   +── cam0
+│   │   │   +── cam0_checkerboard_img0.jpg
+│   │   │   +── cam0_checkerboard_img1.jpg
+│   │   │   +── cam0_checkerboard_img2.jpg
+│   │   │   ...
+│   │   │   +── intrinsics.json
+│   │   +── cam1
+│   │   │   +── cam1_checkerboard_img0.jpg
+│   │   │   +── cam1_checkerboard_img1.jpg
+│   │   │   +── cam1_checkerboard_img2.jpg
+│   │   │   ...
+│   │   │   +── intrinsics.json
+│   │   +── cam2
+│   │   │   +── cam2_checkerboard_img0.jpg
+│   │   │   +── cam2_checkerboard_img1.jpg
+│   │   │   +── cam2_checkerboard_img2.jpg
+│   │   │   ...
+│   │   │   +── intrinsics.json
+│   │   +── cam3
+│   │   │   +── cam3_checkerboard_img0.jpg
+│   │   │   +── cam3_checkerboard_img1.jpg
+│   │   │   +── cam3_checkerboard_img2.jpg
+│   │   │   ...
+│   │   │   +── intrinsics.json
+│   │   +── extrinsics.json
 ```
 
 
