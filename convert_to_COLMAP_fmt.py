@@ -92,8 +92,11 @@ def convert_to_colmap(base_path, colmap_exe):
 
     database_path = os.path.join(base_path, "database.db")
     images_path = os.path.join(base_path, "images")
-    cam_dirs = sorted([os.listdir(os.path.join(images_path, d))[0] for d in os.listdir(images_path) if d.startswith("cam") and os.path.isdir(os.path.join(images_path, d))])
-
+    cam_names = sorted([
+        f"{d}/{os.listdir(os.path.join(images_path, d))[0]}"
+        for d in os.listdir(images_path)
+        if d.startswith("cam") and os.path.isdir(os.path.join(images_path, d)) and os.listdir(os.path.join(images_path, d))
+    ])
     if os.path.exists(database_path):
         os.remove(database_path)
     db = COLMAPDatabase.connect(database_path)
@@ -124,8 +127,8 @@ def convert_to_colmap(base_path, colmap_exe):
         img_file.write("#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME\n")
         img_file.write("#   POINTS2D[] as (X, Y, POINT3D_ID)\n")
 
-        for cam_name in cam_dirs:
-            intr_path = os.path.join(images_path, cam_name.split("_")[0], "intrinsics.json")
+        for cam_name in cam_names:
+            intr_path = os.path.join(images_path, cam_name.split("/")[0], "intrinsics.json")
             w, h, fx, fy, cx, cy, _, dist = load_intrinsics(intr_path)
             if dist.size < 4:
                 raise ValueError(f"distortion 계수 4개 이상 필요 (k1, k2, p1, p2). 현재: {dist}")
@@ -147,14 +150,15 @@ def convert_to_colmap(base_path, colmap_exe):
                 cam_file.write(f"{cam_id} OPENCV {w} {h} {fx:.12f} {fy:.12f} {cx:.12f} {cy:.12f} {k1:.12f} {k2:.12f} {p1:.12f} {p2:.12f}\n")
                 existing_cams[params_tuple] = cam_id
                 camera_id += 1
-
+            
             T = np.array(extrinsics[cam_name])
             R_wc = T[:3, :3]
             t_wc = T[:3, 3]
             qvec = R.from_matrix(R_wc).as_quat()
             qw, qx, qy, qz = qvec[3], qvec[0], qvec[1], qvec[2]
 
-            image_name = f"{cam_name}.jpg"
+            image_name = cam_name
+            
             db.execute(
                 "INSERT INTO images (image_id, name, camera_id, prior_qw, prior_qx, prior_qy, prior_qz, prior_tx, prior_ty, prior_tz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (image_id, image_name, cam_id, qw, qx, qy, qz, t_wc[0], t_wc[1], t_wc[2])

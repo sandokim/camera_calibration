@@ -132,9 +132,11 @@ def main():
             logger.warning(f"No image found in {cam_path}")
             continue
 
-        img_files = sorted(glob.glob(os.path.join(cam_path, "*.jpg")))
-        img_path = img_files[0]  # 정렬된 첫 번째 이미지
-        cam_name = os.path.basename(img_path)  # 🔥 cam0_20240618.jpg 같은 파일명으로 사용
+        img_path = img_files[0]
+        img_filename = os.path.basename(img_path)           # e.g., cam0_20240618.jpg
+        cam_foldername = os.path.basename(cam_path)         # e.g., cam0
+        cam_name = f"{cam_foldername}/{img_filename}"       # → cam0/cam0_20240618.jpg
+
         intrinsics_path = os.path.join(cam_path, "intrinsics.json")
         mtx, dist = load_intrinsics(intrinsics_path)
 
