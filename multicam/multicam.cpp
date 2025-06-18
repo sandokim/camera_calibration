@@ -119,16 +119,8 @@ void multicam::saveFrames()
 {
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
 
-    // 실행 파일 위치 → build/.../Release 까지임
-    QString execPath = QCoreApplication::applicationDirPath();
-
-    // 위로 3단계 올라가서 source 루트 디렉토리로 이동 (multicam/)
-    QDir rootDir(execPath);
-    rootDir.cdUp();  // -> Desktop_Qt_6_9...
-    rootDir.cdUp();  // -> build
-    rootDir.cdUp();  // -> multicam ← 우리가 원하는 프로젝트 루트
-
-    QString basePath = rootDir.absolutePath() + "/scene/myface/images";
+    // 🎯 확정된 절대 경로
+    QString basePath = "C:/Users/Kang/Desktop/camera_calibration/multicam/scene/myface/images";
     QDir().mkpath(basePath + "/input");
 
     for (int i = 0; i < frames.size(); ++i) {
@@ -141,9 +133,9 @@ void multicam::saveFrames()
         bool successCam = cv::imwrite(camFilePath.toStdString(), frames[i]);
 
         if (successCam)
-            qDebug() << "[SAVE] 개별 저장 완료:" << camFilePath;
+            qDebug() << "[SAVE] cam 저장 완료:" << camFilePath;
         else
-            qWarning() << "[ERROR] 개별 저장 실패:" << camFilePath;
+            qWarning() << "[ERROR] cam 저장 실패:" << camFilePath;
 
         QString inputFilePath = QString("%1/input/cam%2_%3.jpg")
                                     .arg(basePath)
