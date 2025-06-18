@@ -25,16 +25,16 @@ checkerboard로 구한 extrinsics와 intrinsics를 다음과 같이 복사하고
 │   +── extrinsics.json
 │   +── images
 │   │   +── cam0
-│   │   │   +── cam0_rgb_img.jpg
+│   │   │   +── cam0_img0.jpg
 │   │   │   +── intrinsics.json
 │   │   +── cam1
-│   │   │   +── cam1_rgb_img.jpg
+│   │   │   +── cam1_img0.jpg
 │   │   │   +── intrinsics.json
 │   │   +── cam2
-│   │   │   +── cam2_rgb_img.jpg
+│   │   │   +── cam2_img0.jpg
 │   │   │   +── intrinsics.json
 │   │   +── cam3
-│   │   │   +── cam3_rgb_img.jpg
+│   │   │   +── cam3_img0.jpg
 │   │   │   +── intrinsics.json
 
 +── scene/4_camera_calib_data

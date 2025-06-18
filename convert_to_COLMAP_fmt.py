@@ -183,5 +183,4 @@ def convert_to_colmap(base_path, colmap_exe):
 if __name__ == "__main__":
     base_path = r"C:/Users/Kang/Desktop/camera_calibration/multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface"
     colmap_exe = r"C:/Users/Kang/colmap-x64-windows-cuda/COLMAP.bat" # C:/Users/Kang/colmap-x64-windows-cuda/COLMAP.bat or C:/Users/maila/KHS/COLMAP-3.9.1-windows-cuda/COLMAP.bat
-
     convert_to_colmap(base_path, colmap_exe)

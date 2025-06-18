@@ -114,7 +114,7 @@ def plot_camera_poses(cam_poses, board_pose=None, title="Camera & Checkerboard P
 
 # ----------------- 메인 -------------------
 def main():
-    base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface/images/checkerboard/"
+    base_dir = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/4_camera_calib_data/checkerboard"
     cam_dirs = sorted([os.path.join(base_dir, d) for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))])
     logger.info(f"Cam directories: {cam_dirs}")
 
@@ -127,16 +127,18 @@ def main():
     cam_errors = {}
 
     for i, cam_path in enumerate(cam_dirs):
-        cam_name = os.path.basename(cam_path)
-        intrinsics_path = os.path.join(cam_path, "intrinsics.json")
-        mtx, dist = load_intrinsics(intrinsics_path)
-        img_files = glob.glob(os.path.join(cam_path, "*.jpg"))
+        img_files = sorted(glob.glob(os.path.join(cam_path, "*.jpg")))
         if not img_files:
             logger.warning(f"No image found in {cam_path}")
             continue
 
-        img_path = img_files[0]
-        print("img path: ", img_path)
+        img_files = sorted(glob.glob(os.path.join(cam_path, "*.jpg")))
+        img_path = img_files[0]  # 정렬된 첫 번째 이미지
+        cam_name = os.path.basename(img_path)  # 🔥 cam0_20240618.jpg 같은 파일명으로 사용
+        intrinsics_path = os.path.join(cam_path, "intrinsics.json")
+        mtx, dist = load_intrinsics(intrinsics_path)
+
+        print("cam name: ", cam_name)
         corners2, _, img, gray, ret= extract_corners(img_path)
         
         # 체커보드 좌표축 2D 이미지에서 시각화

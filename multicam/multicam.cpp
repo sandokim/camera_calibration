@@ -129,7 +129,7 @@ void multicam::saveFrames()
         QDir().mkpath(camDirPath);
 
         // 파일명 정의
-        QString fileName = QString("%1.jpg").arg(timestamp);
+        QString fileName = QString("cam%1_%2.jpg").arg(i).arg(timestamp);
 
         // 경로 1: cam 개별 폴더
         QString camFilePath = QString("%1/%2").arg(camDirPath, fileName);
