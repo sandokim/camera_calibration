@@ -131,7 +131,9 @@ The image reader can only take the parameters for a single camera. If you want t
 
 # 아직 undistortion이 안된 images를 input 폴더에 넣고, convert.py를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
 # triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
-# 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 / convert.py에서는 bundle adjustment만 실행하고 image undistortion을 진행함
+# 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 -> convert.py에서 skip matching을 하면 feature extraction, feature matching, bundle adjustment을 실행하지 않음
+
+### 나도.. convert_to_COLMAP_fmt.py에서 feature extraction, feature matching은 했지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
 
 ```
 python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort --skip_matching
