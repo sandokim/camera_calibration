@@ -115,6 +115,7 @@ The image reader can only take the parameters for a single camera. If you want t
 ### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
 - undistortion이 아직 안된 이미지들을 -> multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/input 에 넣기
 - multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/distorted 폴더 안에 database.db와 triangulated/sparse/0 폴더를 복사
+
 ```python
 <location>
 |---input
@@ -131,6 +132,7 @@ The image reader can only take the parameters for a single camera. If you want t
 # 아직 undistortion이 안된 images를 input 폴더에 넣고, convert.py를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
 # triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
 # 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 / convert.py에서는 bundle adjustment만 실행하고 image undistortion을 진행함
+
 ```
 python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort --skip_matching
 ```
@@ -149,13 +151,6 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
 https://github.com/colmap/colmap/issues/428
 
-# **Reconstruct sparse/dense model from known camera poses**
-keypoints와 matches가 제대로 불러와지지 않아서 triangulation이 안되는 문제 해결중
-
-### 5. COLMAP points3D.txt를 위한 cameras.txt, images.txt 활용 및 sparse 3D 모델 생성
-- **입력:** cameras.txt, images.txt, 체커보드를 촬영한 멀티 카메라 세팅에서 촬영된 이미지
-- **목적:** COLMAP을 통한 3D 모델 생성
-- **출력:** points3D.txt
 
 
 
