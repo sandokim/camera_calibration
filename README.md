@@ -142,12 +142,12 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 단 각 카메라마다 intrinsics가 달랐어서, undistortion된 이미지들의 사이즈가 다르게 생성됨
 
 # 해결중인 부분..
-cam0.jpg, cam1.jpg, cam2.jpg, cam3.jpg의 이미지 사이즈가 다르게 생성됨
+image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함
+따라서 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
 
 ### poses_bounds.npy 생성
 git clone https://github.com/Fyusion/LLFF
 python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort
-
 
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
