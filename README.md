@@ -155,10 +155,23 @@ image undistortion을 수행하면 distortion이 제거된 ideal pinhole camera 
 git clone https://github.com/Fyusion/LLFF
 python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort
 
+### GS 학습 성공!
+```python
+<KIST_llff>
+|---images
+|   |---<image 0>
+|   |---<image 1>
+|   |---...
+|---sparse
+|    |---0
+|        |---cameras.bin
+|        |---images.bin
+|        |---points3D.bin
+|---poses_bounds.npy   
+```
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
 https://github.com/colmap/colmap/issues/428
 
-
-
+multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/poses_bounds.npy
 
