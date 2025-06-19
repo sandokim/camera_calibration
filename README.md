@@ -144,6 +144,12 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 # 해결중인 부분..
 image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함
 따라서 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
+## 일단 camera_calibration_intrinsics.py에서 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 변환하여, 카메라 중심을 이미지 중심으로 고정해서 해보고 crop이 심하게 되는 부분이 해결되는지 봐보자
+
+## 알아야할 부분..
+image undistortion을 수행하면 distortion이 제거된 ideal pinhole camera 모델에 맞는 이미지로 변환됨
+반면, database.db에 저장된 카메라는 OpenCV 카메라 모델이라.. PINHOLE 모델이 아직 아닌데..
+그렇다면 image undistortion을 수행하면 database.db에 저장된 OpenCV 카메라 모델도 PINHOLE 카메라 모델로 자동으로 변환되나??
 
 ### poses_bounds.npy 생성
 git clone https://github.com/Fyusion/LLFF
