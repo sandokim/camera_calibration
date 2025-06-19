@@ -172,6 +172,3 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
 https://github.com/colmap/colmap/issues/428
-
-multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/poses_bounds.npy
-
