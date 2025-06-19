@@ -141,15 +141,15 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 
 단 각 카메라마다 intrinsics가 달랐어서, undistortion된 이미지들의 사이즈가 다르게 생성됨
 
-# 해결중인 부분..
+# 임시로 해결한 부분.. 확실히 해야함
 image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함
 따라서 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
 ## camera_calibration_intrinsics.py에서 체커보드 패턴으로 추정한 intrinsics인 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 대체하여서 crop이 심하게 되는 부분이 해결되었음
 
-## 알아야할 부분..
-image undistortion을 수행하면 distortion이 제거된 ideal pinhole camera 모델에 맞는 이미지로 변환됨
-반면, database.db에 저장된 카메라는 OpenCV 카메라 모델이라.. PINHOLE 모델이 아직 아닌데..
-그렇다면 image undistortion을 수행하면 database.db에 저장된 OpenCV 카메라 모델도 PINHOLE 카메라 모델로 자동으로 변환되나??
+## image_undistorter 명령
+- 왜곡 제거된 이미지와 함께, 이 이미지에 맞는 ideal PINHOLE (또는 SIMPLE_PINHOLE) 카메라 모델을 생성함
+- 'image undistorter' 명령을 수행한다고 해서 database.db 내 OpenCV 모델이 PINHOLE로 자동 변환되지는 않습니다.
+- 대신, undistorted 결과에 대응하는 PINHOLE 모델이 별도 파일(cameras.txt 등)에 생성될 뿐입니다.
 
 ### poses_bounds.npy 생성
 git clone https://github.com/Fyusion/LLFF
