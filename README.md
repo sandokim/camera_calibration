@@ -195,6 +195,26 @@ triangulate_from_known_poses_and_matches.py
 https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp
 cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
 
+```python
+import os, sys
+
+# DLL 경로
+os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
+# .pyd 경로
+sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
+
+# OpenCV import 시도
+import cv2
+print("sfm 모듈:", cv2.sfm)
+```
+
+### cv2.sfm을 사용하기 위한 python 3.12 가상환경 새로 구축 (C:/Users/maila/opencv/build/lib/python3/Release/cv2.cp312-win_amd64.pyd)
+conda create -n opencv_sfm_py312 python=3.12
+conda activate opencv_sfm_py312
+pip install numpy
+pip install matplotlib
+pip install open3d
+
 
 # 🔍 용어 정리: "Dense Reconstruction"
 1. 정확한 정의 (전통적 의미)

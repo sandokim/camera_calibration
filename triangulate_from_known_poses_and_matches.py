@@ -11,14 +11,16 @@ The goal is to evaluate how different matching strategies affect:
 - Bundle Adjustment results
 """
 
-import os
+import os, sys
 import json
-import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from typing import List, Tuple
-
+# DLL 경로
+os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
+# .pyd 경로
+sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
 from cv2 import sfm
 
 # ------------------ 설정 ------------------
@@ -133,5 +135,7 @@ def main():
         print("No 3D points were triangulated.")
 
 if __name__ == "__main__":
-    main()
+    # main()
+    print("sfm 모듈:", sfm)
+    
 
