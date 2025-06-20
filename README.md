@@ -191,3 +191,27 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 # 할일
 ### feature extraction을 dense하게 수행하는 알고리즘을 사용하고, feature matching을 수행하고, PnP 알고리즘으로 구한 카메라 포즈와 함께, 앞서 구한 feature matching으로 찾아진 correspondences가 2개 이상일 경우에도 triangulation하여 3D 포인트를 reconstruct하는 알고리즘을 구현해야하고, 추가적으로 카메라 포즈 및 3D 구조간의 정합 최적화를 위한 Bundle Adjustment(BA)를 수행해야만 함
 
+triangulate_from_known_poses_and_matches.py
+https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp
+cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야 하며, 다음과 같은 단계가 필요합니다.
+
+
+# 🔍 용어 정리: "Dense Reconstruction"
+1. 정확한 정의 (전통적 의미)
+Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장면의 표면을 조밀한 3D 포인트 클라우드 또는 메쉬로 복원하는 것을 의미합니다.
+
+이때는 triangulated sparse points가 아닌,
+
+픽셀 단위로 대응점을 찾고 깊이 정보를 추정하여 수십만~수백만 개의 3D 점을 생성합니다.
+
+→ COLMAP에서도 MVS를 사용한 patch_match_stereo, stereo_fusion 이후가 진짜 dense reconstruction입니다.
+
+2. 흔한 혼동: Dense feature 사용 = dense reconstruction?
+어떤 연구나 구현에서는 dense feature matcher (e.g., LoFTR, DISK, D2-Net)만 사용해도 이를 "dense reconstruction"이라 부르는 경우가 있습니다.
+
+하지만 엄밀히 보면 이건:
+
+dense correspondences 기반의 SfM 또는
+
+dense SfM
+이라고 부르는 게 더 정확합니다.
