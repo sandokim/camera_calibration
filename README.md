@@ -193,7 +193,7 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 
 triangulate_from_known_poses_and_matches.py
 https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp
-cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야 하며, 다음과 같은 단계가 필요합니다.
+cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
 
 
 # 🔍 용어 정리: "Dense Reconstruction"
