@@ -133,9 +133,9 @@ The image reader can only take the parameters for a single camera. If you want t
 # triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
 # 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 -> convert.py에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
 
-### 본인은 convert_to_COLMAP_fmt.py에서 feature extraction, feature matching을 수행하고, 이미 PnP 알고리즘을 통해 계산하여 이미 계산된 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
+### 본인은 convert_to_COLMAP_fmt.py에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
 ### **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음
-### 단 bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음
+### 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음
 ### convert.py에서는 feature extraction, feature matching, mapper 가 수행되었고, mapper는 카메라 포즈 계산 (SfM)과 triangulation을 수행한 후에 (local+global) bundle adjustment를 수행함
 
 ```
