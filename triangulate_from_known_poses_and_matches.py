@@ -21,7 +21,7 @@ from typing import List, Tuple
 os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
 # .pyd 경로
 sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
-from cv2 import sfm
+import cv2
 
 # ------------------ 설정 ------------------
 IMAGE_DIR = "./images"
@@ -81,7 +81,7 @@ def triangulate_multiview_with_sfm(points2d_per_view, projection_matrices):
 
     # Input to sfm.triangulatePoints: list of 2xN, list of 3x4
     pts_3d = np.zeros((3, n_points))
-    sfm.triangulatePoints(points2d_per_view, projection_matrices, pts_3d)
+    cv2.sfm.triangulatePoints(points2d_per_view, projection_matrices, pts_3d)
     return pts_3d.T
 
 # ------------------ Visualization ------------------
@@ -136,6 +136,6 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    print("sfm 모듈:", sfm)
+    print("sfm 모듈:", cv2.sfm)
     
 
