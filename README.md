@@ -151,9 +151,6 @@ https://github.com/colmap/colmap/issues/428
 - 대응점 기반 에러 최소화가 전체 장면 정합성으로 연결되지 않음
 - 이런 경우 BA를 수행해도 최적화에 충분한 정보가 부족하여, 결과가 무의미하거나 오히려 나빠질 수 있음
 
-
-
-
 ### convert.py에서는 feature extraction, feature matching, mapper 가 수행되었고, mapper는 카메라 포즈 계산 (SfM)과 triangulation을 수행한 후에 (local+global) bundle adjustment를 수행함
 
 ```
