@@ -83,6 +83,7 @@ scene/face/images/camX에 들어있는 image의 이름을 extrinsics.json에 맞
 - **목적:** COLMAP 형태의 카메라 파라미터 저장
 - **출력:** cameras.txt, images.txt, points3D.txt(empty)
 
+
 ### 4. sparse/0/ 폴더 생성 후 3.에서 출력한 cameras.txt, images.txt, points3D.txt(empty)를 복사
 https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
 If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a cameras.txt, points3D.txt, and images.txt under a new folder:
@@ -112,7 +113,11 @@ COLMAP은 .txt 파일 기반의 모델을 GUI에서 직접 사용하지 않습�
 
 The image reader can only take the parameters for a single camera. If you want to specify the parameters for multiple cameras, you would have to modify the SQLite database directly. This should be easy by modifying the scripts/python/database.py script.
 
-### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
+#### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
+different cameras with different intrinsics, multiple cameras의 parameters를 지정하려면 SQLite database를 직접 수정해야하고, 이는 `colmap/scripts/python/database.py` 스크립트로 가능하다
+https://github.com/colmap/colmap/issues/428
+
+#### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
 - undistortion이 아직 안된 이미지들을 -> multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/input 에 넣기
 - multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/distorted 폴더 안에 database.db와 triangulated/sparse/0 폴더를 복사
 
@@ -173,6 +178,5 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 |---poses_bounds.npy   
 ```
 
-#### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
-different cameras with different intrinsics, multiple cameras의 parameters를 지정하려면 SQLite database를 직접 수정해야하고, 이는 `colmap/scripts/python/database.py` 스크립트로 가능하다
-https://github.com/colmap/colmap/issues/428
+
+
