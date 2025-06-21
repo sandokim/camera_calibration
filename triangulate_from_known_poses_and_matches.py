@@ -1,141 +1,152 @@
-"""
-This script performs triangulation of 3D points using:
-- Pre-computed camera poses from PnP
-- A variety of feature-matching strategies (e.g., SIFT, LoFTR, D2-Net, etc.)
-
-For each matching method, only correspondences with ≥ 2 views are triangulated.
-
-The goal is to evaluate how different matching strategies affect:
-- Number of triangulated points
-- Geometric consistency
-- Bundle Adjustment results
-"""
-
-import os, sys
+import os
+import sys
 import json
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from typing import List, Tuple
-# DLL 경로
-os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
-# .pyd 경로
-sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
+from typing import List
+
+# ------------------ OpenCV DLL 및 PYD 경로 ------------------
+# os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
+# sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
 import cv2
+print(cv2.sfm)
 
 # ------------------ 설정 ------------------
-IMAGE_DIR = "./images"
-INTRINSICS_PATH = "./intrinsics.json"
-EXTRINSICS_PATH = "./extrinsics.json"
+BASE_DIR = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface"
+IMAGE_DIR = os.path.join(BASE_DIR, "images")
+CAMERAS = ['cam0', 'cam1', 'cam2', 'cam3']
+INTRINSICS_PATHS = [os.path.join(IMAGE_DIR, cam, "intrinsics.json") for cam in CAMERAS]
+EXTRINSICS_PATH = os.path.join(BASE_DIR, "extrinsics.json")
 
-# ------------------ Matching Method Wrappers ------------------
-def dummy_matches(images):
-    # 각 뷰에 대해 대응되는 2D 점 좌표들을 numpy 배열로 리턴
-    pts_per_view = [
-        np.array([[100, 100], [120, 120], [140, 140]], dtype=np.float64).T,  # view 0
-        np.array([[102, 98], [122, 118], [142, 138]], dtype=np.float64).T,   # view 1
-        np.array([[98, 103], [118, 123], [138, 143]], dtype=np.float64).T    # view 2
-    ]
-    return pts_per_view
+# ------------------ 이미지 로드 ------------------
+def load_images() -> (List[np.ndarray], List[str]):
+    image_paths = [os.path.join(IMAGE_DIR, cam, os.listdir(os.path.join(IMAGE_DIR, cam))[0]) for cam in CAMERAS]
+    images = []
+    for p in image_paths:
+        img = cv2.imread(p)
+        if img is None:
+            raise ValueError(f"이미지 로드 실패: {p}")
+        images.append(img)
+    return images, image_paths
 
-def extract_matches_dkm(images):
-    return dummy_matches(images)
+# ------------------ Intrinsics / Extrinsics 로드 ------------------
+def load_intrinsics() -> List[np.ndarray]:
+    Ks = []
+    for path in INTRINSICS_PATHS:
+        with open(path, 'r') as f:
+            data = json.load(f)
+            Ks.append(np.array(data["mtx"]))
+    return Ks
 
-def extract_matches_mast3r(images):
-    return dummy_matches(images)
+def load_extrinsics(image_rel_paths: List[str]) -> List[np.ndarray]:
+    with open(EXTRINSICS_PATH, 'r') as f:
+        data = json.load(f)
 
-def extract_matches_sift(images: List[np.ndarray]):
-    detector = cv2.SIFT_create()
-    keypoints_list = []
-    descriptors_list = []
+    Ps = []
+    for rel_path in image_rel_paths:
+        rel_key = os.path.relpath(rel_path, IMAGE_DIR).replace('\\', '/')
+        if rel_key not in data:
+            raise ValueError(f"{rel_key} not found in extrinsics.json")
+        T = np.array(data[rel_key])
+        P = T[:3, :]
+        Ps.append(P)
+    return Ps
+
+# ------------------ 특징 추출 및 매칭 ------------------
+def extract_sift_tracks(images: List[np.ndarray]):
+    sift = cv2.SIFT_create()
+    keypoints, descriptors = [], []
+
     for img in images:
-        kp, des = detector.detectAndCompute(img, None)
-        keypoints_list.append(kp)
-        descriptors_list.append(des)
+        kp, des = sift.detectAndCompute(img, None)
+        keypoints.append(kp)
+        descriptors.append(des)
 
-    matcher = cv2.BFMatcher()
-    match_pairs = []
-    for i in range(len(descriptors_list)):
-        for j in range(i + 1, len(descriptors_list)):
-            matches = matcher.knnMatch(descriptors_list[i], descriptors_list[j], k=2)
-            good_matches = [(m.queryIdx, m.trainIdx) for m, n in matches if m.distance < 0.75 * n.distance]
-            match_pairs.append((i, j, good_matches))
-    return match_pairs
+    n_views = len(images)
+    tracks = defaultdict(lambda: [None] * n_views)
+    bf = cv2.BFMatcher()
+    track_id = 0
 
-# ------------------ 전체 Feature + Matching Pipeline ------------------
-def extract_and_match_features(images: List[np.ndarray], method: str = "sift"):
-    if method == "sift":
-        return extract_matches_sift(images)
-    elif method == "dkm":
-        return extract_matches_dkm(images)
-    elif method == "mast3r":
-        return extract_matches_mast3r(images)
-    else:
-        raise ValueError("Unsupported feature extraction method")
+    for i in range(n_views):
+        for j in range(i + 1, n_views):
+            if descriptors[i] is None or descriptors[j] is None:
+                continue
+            matches = bf.knnMatch(descriptors[i], descriptors[j], k=2)
+            for m, n in matches:
+                if m.distance < 0.75 * n.distance:
+                    pt_i = keypoints[i][m.queryIdx].pt
+                    pt_j = keypoints[j][m.trainIdx].pt
+                    tracks[track_id][i] = pt_i
+                    tracks[track_id][j] = pt_j
+                    track_id += 1
+    return tracks
 
 # ------------------ Triangulation ------------------
-def triangulate_multiview_with_sfm(points2d_per_view, projection_matrices):
-    assert len(points2d_per_view) == len(projection_matrices), "Number of 2D point sets must match number of views"
-    n_views = len(points2d_per_view)
-    n_points = points2d_per_view[0].shape[1]
+def triangulate_track(track: List, projection_matrices: List[np.ndarray], images: List[np.ndarray]) -> (np.ndarray, np.ndarray):
+    views = [(i, pt) for i, pt in enumerate(track) if pt is not None]
+    if len(views) < 2:
+        return None, None
 
-    # Input to sfm.triangulatePoints: list of 2xN, list of 3x4
-    pts_3d = np.zeros((3, n_points))
-    cv2.sfm.triangulatePoints(points2d_per_view, projection_matrices, pts_3d)
-    return pts_3d.T
+    pts2d = np.array([pt for _, pt in views], dtype=np.float64).T  # (2, N)
+    Ps = [projection_matrices[i] for i, _ in views]
 
-# ------------------ Visualization ------------------
-def visualize_point_cloud(points_3d):
+    pts_3d = np.zeros((3, 1))
+    cv2.sfm.triangulatePoints(pts2d, Ps, pts_3d)
+    point3d = pts_3d[:, 0]
+
+    # 첫 번째 관측 이미지에서 색 가져오기
+    i0, pt0 = views[0]
+    x, y = map(int, pt0)
+    color = images[i0][y, x][::-1]  # BGR → RGB
+
+    return point3d, color
+
+# ------------------ 시각화 ------------------
+def visualize_point_cloud(points_3d, colors):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], s=1, c='b')
+    ax.scatter(points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], c=colors / 255.0, s=1)
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
-    ax.set_title("Triangulated 3D Points")
+    ax.set_title("Triangulated 3D Points with Color")
     plt.show()
 
-# ------------------ Main Pipeline ------------------
+# ------------------ 전체 파이프라인 ------------------
 def main():
-    with open(INTRINSICS_PATH, 'r') as f:
-        intrinsics = json.load(f)
-    K = np.array(intrinsics["mtx"])
+    print("[1] 이미지 로드")
+    images, image_paths = load_images()
 
-    with open(EXTRINSICS_PATH, 'r') as f:
-        extrinsics = json.load(f)
+    print("[2] Intrinsics / Extrinsics 로드")
+    Ks = load_intrinsics()
+    Ps_raw = load_extrinsics(image_paths)
+    Ps = [K @ P for K, P in zip(Ks, Ps_raw)]
 
-    images = []
-    image_names = sorted(os.listdir(IMAGE_DIR))
-    for name in image_names:
-        img = cv2.imread(os.path.join(IMAGE_DIR, name))
-        if img is None:
-            continue
-        images.append(img)
+    print("[3] 특징 추출 및 트랙 생성")
+    tracks = extract_sift_tracks(images)
+    print(f"    → 트랙 수: {len(tracks)}")
 
-    projection_matrices = []
-    for name in image_names:
-        if name not in extrinsics:
-            raise ValueError(f"{name} not found in extrinsics.json")
-        T = np.array(extrinsics[name])
-        P = K @ T[:3, :]
-        projection_matrices.append(P)
+    points_3d = []
+    colors = []
 
-    method = "dkm"  # "sift", "dkm", "mast3r" 중 선택 가능
-    matches = extract_and_match_features(images, method=method)
+    for track in tracks.values():
+        if sum(p is not None for p in track) >= 2:
+            pt3d, color = triangulate_track(track, Ps, images)
+            if pt3d is not None:
+                points_3d.append(pt3d)
+                colors.append(color)
 
-    if method == "sift":
-        print("Triangulation with SIFT matches is not implemented in N-view format.")
+    if not points_3d:
+        print("    → 유효한 3D 포인트 없음")
         return
 
-    points_3d = triangulate_multiview_with_sfm(matches, projection_matrices)
+    points_3d = np.array(points_3d)
+    colors = np.array(colors)
+    print(f"[4] Triangulated points: {len(points_3d)}개")
 
-    if points_3d.size > 0:
-        visualize_point_cloud(points_3d)
-    else:
-        print("No 3D points were triangulated.")
+    print("[5] 시각화")
+    visualize_point_cloud(points_3d, colors)
 
 if __name__ == "__main__":
-    # main()
-    print("sfm 모듈:", cv2.sfm)
-    
-
+    main()
