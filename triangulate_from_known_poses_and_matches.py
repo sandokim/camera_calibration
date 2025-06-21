@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from typing import List
 import cv2
+import torch
+from dkm import DKMv3_outdoor
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+dkm_model = DKMv3_outdoor(device=device)
+print(f"DKM model loaded on {device}")
 
 # ------------------ 설정 ------------------
 BASE_DIR = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface"
