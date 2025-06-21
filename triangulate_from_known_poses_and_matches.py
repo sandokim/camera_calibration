@@ -5,12 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from typing import List
-
-# ------------------ OpenCV DLL 및 PYD 경로 ------------------
-# os.add_dll_directory("C:/Users/maila/opencv/build/bin/Release")
-# sys.path.append("C:/Users/maila/opencv/build/lib/python3/Release")
 import cv2
-print(cv2.sfm)
 
 # ------------------ 설정 ------------------
 BASE_DIR = "multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface"
