@@ -1,3 +1,6 @@
-[submodule "LLFF"]
-	path = LLFF
-	url = https://github.com/Fyusion/LLFF
+[submodule "submodules/LLFF"]
+	path = submodules/LLFF
+	url = https://github.com/Fyusion/LLFF.git
+[submodule "submodules/DKM"]
+	path = submodules/DKM
+	url = https://github.com/Parskatt/DKM.git
