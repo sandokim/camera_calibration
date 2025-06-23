@@ -205,8 +205,10 @@ pip install matplotlib
 cd submodules 
 git clone https://github.com/Parskatt/DKM.git
 cd ..
-pip install submodules/DKM # opencv가 같이 깔림
-pip uninstall -y opencv-python opencv-python-headless # opencv 관련 라이브러리 제거
+# DKM 설치시 opencv가 같이 깔림
+pip install submodules/DKM 
+# opencv 관련 라이브러리 제거
+pip uninstall -y opencv-python opencv-python-headless
 
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
 
