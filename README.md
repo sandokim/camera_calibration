@@ -159,10 +159,15 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 
 각 카메라마다 intrinsics가 달랐어서, undistortion된 이미지들의 사이즈가 다르게 생성됨
 
-# 임시로 해결한 부분.. 확실히 해야함
-image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함
-따라서 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
-## camera_calibration_intrinsics.py에서 체커보드 패턴으로 추정한 intrinsics인 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 대체하여서 crop이 심하게 되는 부분이 해결되었음
+## 카메라 내부파라미터 설정
+- image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함.
+- 따라서 추정된 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
+### camera_calibration_intrinsics.py에서 체커보드 패턴으로 추정한 intrinsics인 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 대체하여서 crop이 심하게 되는 부분이 해결되었음
+카메라의 **내부 파라미터(intrinsic parameters)**는 일반적으로 다음과 같은 세 가지 요소로 구성됩니다: 2D Translation Matrix, 2D Scaling Matrix, 그리고 2D Shear Matrix입니다.
+- 2D Translation Matrix는 **principal point(주점)**의 위치를 나타내며, 이는 이미지 좌표계에서 광축이 통과하는 점입니다. **대부분의 경우, 이 주점은 이미지의 중심에 위치한다고 가정합니다.**
+- 2D Shear Matrix는 이미지 축 간의 비직교성을 표현합니다. 그러나 실제 대부분의 카메라에서는 픽셀의 x, y축이 직교한다고 가정하기 때문에, 이 항은 무시되는 경우가 많습니다.
+- 2D Scaling Matrix는 이미지의 x축과 y축 방향에 대한 **focal length(초점 거리)**를 나타냅니다. 초점 거리는 이미지 센서와 이미지 평면 사이의 거리로 해석할 수 있으며, 이 값은 카메라 캘리브레이션에서 핵심적으로 추정하는 파라미터입니다.
+- 따라서 실제 응용이나 본 논문에서는 intrinsic parameters 중 focal length에 해당하는 scaling 요소만을 추정 대상으로 삼고 있으며, **나머지 요소들은 고정(principal point)**되거나 **무시(shear)**되는 경우가 많습니다.
 
 ## image_undistorter 명령
 - 왜곡 제거된 이미지와 함께, 이 이미지에 맞는 ideal PINHOLE (또는 SIMPLE_PINHOLE) 카메라 모델을 생성함
@@ -195,8 +200,8 @@ triangulate_from_known_poses_and_matches.py
 https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp
 cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
 
-
 ### cv2.sfm을 사용하기 위한 python 3.12 가상환경 새로 구축 (C:/Users/maila/opencv/build/lib/python3/Release/cv2.cp312-win_amd64.pyd)
+```python
 conda create -n opencv_sfm_py312 python=3.12 -y
 conda activate opencv_sfm_py312
 pip install "numpy<2.0"
@@ -211,25 +216,12 @@ pip install submodules/DKM
 pip uninstall -y opencv-python opencv-python-headless
 
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
+```
 
-
-
-# 🔍 용어 정리: "Dense Reconstruction"
-1. 정확한 정의 (전통적 의미)
-Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장면의 표면을 조밀한 3D 포인트 클라우드 또는 메쉬로 복원하는 것을 의미합니다.
-
-이때는 triangulated sparse points가 아닌,
-
-픽셀 단위로 대응점을 찾고 깊이 정보를 추정하여 수십만~수백만 개의 3D 점을 생성합니다.
-
+## 🔍 용어 정리: "Dense Reconstruction"
+Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장면의 표면을 조밀한 3D 포인트 클라우드 또는 mesh로 복원하는 것을 의미합니다.
+이때는 triangulated sparse points가 아닌, 픽셀 단위로 대응점을 찾고 깊이 정보를 추정하여 수십만~수백만 개의 3D 점을 생성합니다.
 → COLMAP에서도 MVS를 사용한 patch_match_stereo, stereo_fusion 이후가 진짜 dense reconstruction입니다.
 
-2. 흔한 혼동: Dense feature 사용 = dense reconstruction?
-어떤 연구나 구현에서는 dense feature matcher (e.g., LoFTR, DISK, D2-Net)만 사용해도 이를 "dense reconstruction"이라 부르는 경우가 있습니다.
-
-하지만 엄밀히 보면 이건:
-
-dense correspondences 기반의 SfM 또는
-
-dense SfM
-이라고 부르는 게 더 정확합니다.
+### 흔한 혼동: Dense feature 사용 = dense reconstruction?
+어떤 연구나 구현에서는 dense feature matcher (e.g., LoFTR)만 사용해도 이를 "dense reconstruction"이라 부르는 경우가 있습니다. 하지만 엄밀히 보면 이건: dense correspondences 기반의 SfM 또는 dense SfM 이라고 부르는 게 더 정확합니다.
