@@ -118,6 +118,7 @@ The image reader can only take the parameters for a single camera. If you want t
 #### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
 - undistortion이 아직 안된 이미지들을 -> `multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/input` 에 넣기
 - `multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/distorted` 폴더 안에 `database.db`와 `triangulated/sparse/0` 폴더를 복사
+- `triangulated/sparse/0`에서 얻었던 `cameras.txt, images.txt, points3D.txt` -> `distorted/sparse/0`에 복사했음
 
 ```python
 <location>
@@ -132,8 +133,29 @@ The image reader can only take the parameters for a single camera. If you want t
             |---...
 ```
 
-- 아직 undistortion이 안된 images를 input 폴더에 넣고, `convert.py`를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
-- `triangulated/sparse/0`에서 얻었던 `cameras.txt, images.txt, points3D.txt` -> `distorted/sparse/0`에 복사했음
+- `convert.py`를 실행하면 undistorted된 이미지들은 `images` 폴더에 생성됨
+
+```python
+<location>
+├── input/                   # (1) 원본 이미지 (왜곡 포함)
+│   ├── image0.jpg
+│   ├── image1.jpg
+│   └── ...
+├── distorted/              # (2) COLMAP 작업 공간 (왜곡 포함)
+│   ├── database.db         # COLMAP용 DB (왜곡 포함 이미지 기준)
+│   └── sparse/
+│       └── 0/
+│           └── cameras.bin
+│           └── images.bin
+│           └── points3D.bin
+├── images/                 # (3) Undistorted 이미지 (Pinhole 기준 변환됨)
+├── sparse/                 # (4) Undistorted 기준 재구성 결과
+│   └── 0/
+│       └── cameras.bin
+│       └── images.bin
+│       └── points3D.bin
+```
+
 - 미리 COLMAP의 feature extraction, feature matching을 실행하여, `database.db`에 저장했었기 때문에, `convert.py`에서는 feature extraction, feature matching을 실행하지 않음 -> `convert.py`에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
 - 본인은 `convert_to_COLMAP_fmt.py`에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
 - BA는 기존의 3D 구조와 카메라 포즈를 정밀하게 정합하는 최적화 과정입니다. **bundle adjustment에서는 2D reprojection error를 최소화합니다.**
@@ -193,22 +215,38 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 - [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)
 - `cv2.sfm` 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
 
-### cv2.sfm을 사용하기 위한 python 3.12 가상환경 새로 구축
+### cv2.sfm을 사용하기 위한 python 3.11 가상환경 새로 구축 (mast3r의 faiss-gpu 사용을 위해 CUDA 12.1로 설치)
 ```python
-conda create -n opencv_sfm_py312 python=3.12 -y
-conda activate opencv_sfm_py312
+# mast3r 설치
+conda create -n mast3r python=3.11 cmake=3.14.0 -y
+conda activate mast3r 
 pip install "numpy<2.0"
-pip install matplotlib
-
-cd submodules 
-git clone https://github.com/Parskatt/DKM.git
-cd ..
-# DKM 설치시 opencv가 같이 깔림
-pip install submodules/DKM 
-# opencv 관련 라이브러리 제거
+## cv2.sfm 직접 빌드하여 설치
+...
+## mast34 설치
+conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia  # cuda 12.1로 재설치
+cd submodules/mast3r
+pip install -r requirements.txt
+pip install -r dust3r/requirements.txt
+pip install -r dust3r/requirements_optional.txt
+## opencv 관련 라이브러리 제거
 pip uninstall -y opencv-python opencv-python-headless
 
-pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
+## compile and install ASMK
+pip install cython
+
+cd submodules/asmk/cython/
+cythonize *.pyx
+cd ..
+conda install -c conda-forge faiss-gpu # faiss-gpu, containing both CPU and GPU indices, is available on Linux (x86-64 only) for CUDA 11.4 and 12.1
+pip install .  # or python3 setup.py build_ext --inplace
+cd ..
+
+
+# DKM 설치
+pip install submodules/DKM 
+# DKM 설치시 같이 깔린 opencv 라이브러리 제거
+pip uninstall -y opencv-python opencv-python-headless
 ```
 
 ## Dense Matching Algorithm
