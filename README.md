@@ -253,6 +253,7 @@ pip uninstall -y opencv-python opencv-python-headless
 - [DUSt3R](https://github.com/naver/dust3r)
   - DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 focal length도 예측할 수 있습니다.
 - [MASt3R](https://github.com/naver/mast3r)
+  - [MASt3R and MASt3R-SfM Explanation: Image Matching and 3D Reconstruction Results](https://learnopencv.com/mast3r-sfm-grounding-image-matching-3d/?utm_source=chatgpt.com)
 - [DKM](https://github.com/Parskatt/DKM)
 
 ### 기존 Image Matching의 문제점 
