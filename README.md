@@ -274,7 +274,10 @@ pip uninstall -y opencv-python opencv-python-headless
 일반적으로 Image Matching은 2D문제로 다뤄지고 있었습니다. 반면 DUSt3R에서는 Transformer기반으로 두 이미지의 pixel과 3D pointmap의 correspondence 예측을 통해 3D공간상에서 Image Matching 문제를 풀었습니다.
 **하지만 DUSt3R이 3D Reconstruction 목적으로 만들어졌기에, 시점 변화엔 강인하지만 Image Matching에선 상대적으로 부정확합니다. MASt3R에서는 DUSt3R을 활용하여 Image Matching에 특화하는 방법에 관해 다룹니다.**
 
-![image](https://github.com/user-attachments/assets/5ec51bfc-85d5-4bb6-b0ad-0ebffab5d600)
+  <p align="center">
+    <img src="https://github.com/user-attachments/assets/5ec51bfc-85d5-4bb6-b0ad-0ebffab5d600" width="600"/>
+  </p>
+  <p align="center"><em>MASt3R performance on extreme viewpoint differences</em></p>
 
 위 그림은 MASt3R에서 가져왔습니다. 2개 입력 이미지의 공통 영역이 아주 적음에도 불구하고, 2D문제가 아니라 3D문제로 풀었기 때문에, Image Matching이 잘 된다는 것을 보여주는 이미지인 것 같습니다. 
 
