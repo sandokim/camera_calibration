@@ -8,6 +8,10 @@ import submodules.mast3r.mast3r.utils.path_to_dust3r
 from submodules.mast3r.dust3r.dust3r.inference import inference
 from submodules.mast3r.dust3r.dust3r.utils.image import load_images
 
+'''
+Code Explained: https://learnopencv.com/mast3r-sfm-grounding-image-matching-3d/?utm_source=chatgpt.com
+'''
+
 if __name__ == '__main__':
     device = 'cuda'
     schedule = 'cosine'
@@ -30,7 +34,7 @@ if __name__ == '__main__':
     matches_im0, matches_im1 = fast_reciprocal_NNs(desc1, desc2, subsample_or_initxy1=8,
                                                    device=device, dist='dot', block_size=2**13) # matches_im0.shape: [1522, 2] / matches_im1.shape: [1522, 2]
 
-    # ignore small border around the edge
+    # ignore small border around the edge / To avoid spurious matches along the edges, we can filter them as they are often unreliable due to occlusion or partial visibility.
     H0, W0 = view1['true_shape'][0] # [[H,W]][0] => H, W
     valid_matches_im0 = (matches_im0[:, 0] >= 3) & (matches_im0[:, 0] < int(W0) - 3) & (
         matches_im0[:, 1] >= 3) & (matches_im0[:, 1] < int(H0) - 3) # [1522,] : True or False
