@@ -219,10 +219,11 @@ pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https
 
 ### 기존 Image Matching의 문제점 
 전통적인 이미지 매칭 기법은 일반적으로 세 단계로 구성됩니다:
-- (1) 키포인트 추출,
-- (2) 각 키포인트의 주변 영역으로부터 지역적으로 불변하는 descriptor를 추출,
-- (3) Feaeture Space에서 descriptor 간 거리 비교를 통해 키포인트 매칭 수행.
-- 이러한 방식은 조명 변화나 시점 변화에 비교적 강인하며, 적은 수의 키포인트만으로도 밀리초 단위의 빠른 매칭이 가능합니다. 그러나 전역적인 기하학적 문맥(geometric context)을 고려하지 않기 때문에, 반복 패턴이나 저텍스처 영역에서는 오차가 발생하기 쉽습니다.
+- (1) 키포인트 추출
+- (2) 각 키포인트의 주변 영역으로부터 지역적으로 불변하는 descriptor를 추출
+- (3) Feaeture Space에서 descriptor 간 거리 비교를 통해 키포인트 매칭 수행
+
+이러한 방식은 조명 변화나 시점 변화에 비교적 강인하며, 적은 수의 키포인트만으로도 밀리초 단위의 빠른 매칭이 가능합니다. 그러나 전역적인 기하학적 문맥(geometric context)을 고려하지 않기 때문에, 반복 패턴이나 저텍스처 영역에서는 오차가 발생하기 쉽습니다.
 
 일반적으로 Image Matching은 2D문제로 다뤄지고 있었습니다. 반면 DUSt3R에서는 Transformer기반으로 두 이미지의 pixel과 3D pointmap의 correspondence 예측을 통해 3D공간상에서 Image Matching 문제를 풀었습니다.
 **하지만 DUSt3R이 3D Reconstruction 목적으로 만들어졌기에, 시점 변화엔 강인하지만 Image Matching에선 상대적으로 부정확합니다. MASt3R에서는 DUSt3R을 활용하여 Image Matching에 특화하는 방법에 관해 다룹니다.**
