@@ -17,31 +17,31 @@ if __name__ == '__main__':
     model_name = "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric"
     # you can put the path to a local checkpoint in model_name if needed
     model = AsymmetricMASt3R.from_pretrained(model_name).to(device)
-    images = load_images(['submodules/mast3r/dust3r/croco/assets/Chateau1.png', 'submodules/mast3r/dust3r/croco/assets/Chateau2.png'], size=512)
+    images = load_images(['multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/images/cam0/cam0_20250618_180842.jpg', 'multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/images/cam1/cam1_20250618_180842.jpg'], size=512)
     output = inference([tuple(images)], model, device, batch_size=1, verbose=False)
 
     # at this stage, you have the raw dust3r predictions
-    view1, pred1 = output['view1'], output['pred1']
-    view2, pred2 = output['view2'], output['pred2']
+    view1, pred1 = output['view1'], output['pred1'] # view1.keys(): img, true_shape, idx, instance / pred1.keys(): pts3d, conf, desc, desc_conf
+    view2, pred2 = output['view2'], output['pred2'] # view2.keys(): img, true_shape, idx, instance / pred2.keys(): conf, desc, desc_conf, pts3d_in_other_view
 
-    desc1, desc2 = pred1['desc'].squeeze(0).detach(), pred2['desc'].squeeze(0).detach()
+    desc1, desc2 = pred1['desc'].squeeze(0).detach(), pred2['desc'].squeeze(0).detach() # desc1.shape: [288, 512, 24] / desc2.shape [272, 512, 24]
 
     # find 2D-2D matches between the two images
     matches_im0, matches_im1 = fast_reciprocal_NNs(desc1, desc2, subsample_or_initxy1=8,
-                                                   device=device, dist='dot', block_size=2**13)
+                                                   device=device, dist='dot', block_size=2**13) # matches_im0.shape: [1522, 2] / matches_im1.shape: [1522, 2]
 
     # ignore small border around the edge
-    H0, W0 = view1['true_shape'][0]
+    H0, W0 = view1['true_shape'][0] # [[H,W]][0] => H, W
     valid_matches_im0 = (matches_im0[:, 0] >= 3) & (matches_im0[:, 0] < int(W0) - 3) & (
-        matches_im0[:, 1] >= 3) & (matches_im0[:, 1] < int(H0) - 3)
+        matches_im0[:, 1] >= 3) & (matches_im0[:, 1] < int(H0) - 3) # [1522,] : True or False
 
     H1, W1 = view2['true_shape'][0]
     valid_matches_im1 = (matches_im1[:, 0] >= 3) & (matches_im1[:, 0] < int(W1) - 3) & (
-        matches_im1[:, 1] >= 3) & (matches_im1[:, 1] < int(H1) - 3)
+        matches_im1[:, 1] >= 3) & (matches_im1[:, 1] < int(H1) - 3) # [1522,] : True or False
 
-    valid_matches = valid_matches_im0 & valid_matches_im1
-    matches_im0, matches_im1 = matches_im0[valid_matches], matches_im1[valid_matches]
-
+    valid_matches = valid_matches_im0 & valid_matches_im1 # [1522,] : True or False
+    matches_im0, matches_im1 = matches_im0[valid_matches], matches_im1[valid_matches] # matches_im0.shape: [1387, 2] / matches_im1.shape: [1387, 2]
+    
     # visualize a few matches
     import numpy as np
     import torch
@@ -50,6 +50,7 @@ if __name__ == '__main__':
 
     n_viz = 20
     num_matches = matches_im0.shape[0]
+    print('# of matches: ', num_matches)
     match_idx_to_viz = np.round(np.linspace(0, num_matches - 1, n_viz)).astype(int)
     viz_matches_im0, viz_matches_im1 = matches_im0[match_idx_to_viz], matches_im1[match_idx_to_viz]
 
