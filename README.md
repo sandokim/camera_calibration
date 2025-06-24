@@ -219,6 +219,8 @@ pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https
 DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 아래 수식으로 focal length를 예측 할 수 있습니다.
 일반적으로 Image Matching은 2D문제로 다뤄지고 있었습니다. 반면 이전 연구인 DUSt3R(이전글) 에서는 Transformer기반으로 두 이미지의 pixel과 3D pointmap의 correspondence 예측을 통해 3D공간상에서 Image Matching 문제를 풀었습니다.
 
+![image](https://github.com/user-attachments/assets/5ec51bfc-85d5-4bb6-b0ad-0ebffab5d600)
+
 위 그림은 논문 첫페이지에서 가져왔습니다. 2개 입력 이미지의 공통 영역이 아주 적음에도 불구하고, 2D문제가 아니라 3D문제로 풀었기 때문에, Image Matching이 잘 된다는 것을 보여주는 이미지인 것 같습니다. 어떻게 Image Matching을 3D문제로 풀어내는지 알아보겠습니다.
 
 ## 🔍 용어 정리: "Dense Reconstruction"
