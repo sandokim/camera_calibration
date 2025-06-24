@@ -274,7 +274,9 @@ pip uninstall -y opencv-python opencv-python-headless
   </p>
   <p align="center"><em>MASt3R performance on Hard Cases</em></p>
 - **Key Takeaways**
-  - DUSt3R and MASt3R have excellent 3D scene understanding and performs in the wild zero shot. From the predicted 3D geometry focal length can be recovered making these models as a standalone and go to methods for 3D scene reconstruction and pose estimation. Their success lies in firmly rooting image matching and finding correspondences as 3D in nature. MASt3R predicts 3D correspondences, even in regions where there aren’t much camera motion or for neatly opposing view of the scene.
+  - DUSt3R and MASt3R have excellent 3D scene understanding and performs in the wild zero shot. From the predicted 3D geometry focal length can be recovered making these models as a standalone and go to methods for 3D scene reconstruction and pose estimation. **Their success lies in firmly rooting image matching and finding correspondences as 3D in nature.** MASt3R predicts 3D correspondences, even in regions where there aren’t much camera motion or for neatly opposing view of the scene.
+  - DUSt3R과 MASt3R의 성공은 이미지 매칭과 대응점 찾기를 본질적으로 3D 문제로 단단히 정립한 데에 있습니다. 
+  - MASt3R는 카메라 움직임이 거의 없는 영역이나 장면의 정반대 시점에서도 3D 대응점을 예측할 수 있습니다.
 
 - [DKM](https://github.com/Parskatt/DKM)
 
