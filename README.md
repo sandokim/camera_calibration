@@ -225,10 +225,81 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 
 ## Triangulation with more than 3 correspondences (cv2.sfm)
 
+
+### [OpenCV triangulatePoints 함수](https://docs.opencv.org/4.x/d0/dbd/group__triangulation.html)
+- Triangulates the 3d position of 2d correspondences between several images. Reference: Internally it uses DLT method [119] 12.2 pag.312
+- [119] Richard Hartley and Andrew Zisserman. Multiple view geometry in computer vision. Cambridge university press, 2003.
+- cv2.sfm.triangulatePoints(InputArrrayOfArrays points2d, InputArrayOfArrays projection_matrices, OutputArray points3d)
+  - 제공된 코드의 핵심은 2개 뷰(2-view)의 경우와 3개 이상의 뷰(N-view)의 경우를 나누어 처리하며, 두 경우 모두 DLT(Direct Linear Transformation) 원리를 기반으로 3D 좌표를 계산한다는 점입니다.
+  - 뷰의 개수(nviews)가 정확히 2개일 경우, triangulateDLT 함수를 각 점 쌍에 대해 호출합니다.
+    - 2-뷰의 경우(triangulateDLT): 각 대응점 쌍으로부터 4개의 선형 방정식을 만들어 AX=0 시스템을 구성하고, SVD를 이용해 X를 직접 풉니다. 이는 책 12.2절에 기술된 표준 DLT 방법과 정확히 일치합니다. 
+  - 뷰의 개수가 2개보다 많을 경우, triangulateNViews 함수를 각 점 트랙에 대해 호출합니다.
+    - 다중 뷰의 경우(triangulateNViews): 3D 점 X와 각 뷰의 깊이 스케일 λi를 모두 미지수로 두는 더 큰 선형 시스템을 구성합니다. SVD를 통해 이 시스템을 푼 뒤, 3D 점에 해당하는 부분만 추출하여 최종 결과를 얻습니다. 이 방법은 모든 뷰의 정보를 동시에 활용하여 더 안정적이고 정확한 결과를 얻을 수 있습니다.
+
+  - 다중 뷰(3개 이상)에 대해 이 함수를 호출하기 위해 필요한 입력은 `points2d`와 `projection_matrices` 두 가지입니다.
+    - points2d: 2D 대응점 데이터
+      - 이 매개변수는 여러 뷰에 걸쳐 추적된 2D 점들의 집합입니다.
+      - 예를 들어, 3개의 뷰에서 100개의 점을 삼각측량한다면:
+        - points2d는 3개의 Mat 객체를 담고 있는 vector가 됩니다.
+        - 각 Mat은 2x100 크기를 가집니다.
+        - points2d[0].col(5)는 첫 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
+        - points2d[1].col(5)는 두 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
+        - points2d[2].col(5)는 세 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
+        - 이 세 점 points2d[0].col(5), points2d[1].col(5), points2d[2].col(5)는 모두 동일한 3D 공간상의 한 점에서 투영된 것이어야 합니다.
+    - `projection_matrices`: 투영 행렬 데이터
+      - 이 매개변수는 각 뷰에 해당하는 카메라의 투영 행렬(카메라 행렬) 집합입니다.
+      - 벡터의 크기는 전체 뷰의 개수 m으로, points2d 벡터의 크기와 정확히 일치해야 합니다.
+      - 벡터의 각 요소인 cv::Mat 객체는 3x4 크기를 가집니다.
+      - 모든 투영 행렬 P_i는 반드시 동일한 월드 좌표계(world coordinate system)를 기준으로 표현되어야 합니다.
+      - 이 행렬들은 일반적으로 사전 단계에서 계산됩니다. 예를 들어, Fundamental Matrix 또는 Trifocal Tensor를 계산한 뒤 이로부터 카메라 행렬을 복원하거나(projective reconstruction), 번들 조정(bundle adjustment)을 통해 얻어진 결과물일 수 있습니다.
+      - 각기 다른 시점에 독립적으로 캘리브레이션된 카메라 행렬들을 그대로 사용하면, 각 카메라가 자신만의 월드 좌표계를 가지므로 올바른 삼각측량이 불가능합니다.
+
+- 사용자께서 MASt3R로 구현한 pairwise matching은 Correspondence Tracking의 훌륭한 첫 단계입니다. 이를 다중 뷰 트래킹으로 확장하는 전체적인 파이프라인은 다음과 같습니다.
+  - Pairwise Matching: 인접한 이미지 쌍들에 대해 MASt3R를 실행하여 matches(i, i+1)를 구합니다.
+  - Track Chaining: 이 쌍별 매칭들을 연결하여 긴 후보 트랙들을 생성합니다.
+  - Robust Verification: RANSAC과 Trifocal Tensor를 이용하여 후보 트랙들 중 기하학적으로 올바른 inlier 트랙들만 선별합니다. 이 과정은 책의 Algorithm 16.4에 잘 설명되어 있습니다.
+  - 이렇게 최종적으로 얻어진 inlier 대응점 트랙들이 바로 cv::sfm::triangulatePoints 함수의 points2d 입력으로 사용될 고품질 데이터입니다. 이 데이터와 함께, RANSAC 과정에서 얻은 카메라 행렬들(Trifocal Tensor로부터 복원)을 projection_matrices 입력으로 주면, 매우 정확하고 안정적인 다중 뷰 삼각측량을 수행할 수 있습니다.
+
+### Correspondence Tracking을 위한 단계별 절차
+#### 1단계: 순차적 쌍별 매칭 (Sequential Pairwise Matching)
+- 사용자께서 이미 구현하신 코드가 이 단계에 해당합니다. m개의 뷰(이미지)가 있다면, 인접한 모든 이미지 쌍에 대해 MASt3R 코드를 실행합니다.
+  - view 1과 view 2 사이의 매칭 matches(1,2)를 구합니다.
+  - view 2와 view 3 사이의 매칭 matches(2,3)를 구합니다.
+  - view 3과 view 4 사이의 매칭 matches(3,4)를 구합니다.
+  - ...
+  - view m-1과 view m 사이의 매칭 matches(m-1,m)을 구합니다.
+  - 이 단계의 결과물은 여러 개의 독립적인 2-view 대응점 목록입니다.
+
+#### 2단계: 매칭 연결을 통한 후보 트랙 생성 (Chaining Matches to Form Putative Tracks)
+- 이제 각 쌍별 매칭 결과를 연결하여 여러 프레임에 걸친 트랙을 만듭니다. 가장 간단한 방법은 다음과 같습니다.
+  - matches(1,2)에서 한 대응점 쌍 (p1, p2)를 선택합니다. p1은 view 1의 점, p2는 view 2의 점입니다. 이것이 트랙의 시작입니다.
+  - matches(2,3) 목록에서 p2와 일치하거나 매우 가까운 점을 찾습니다. 만약 (p2, p3)라는 매칭을 찾았다면, 트랙을 (p1, p2, p3)로 확장합니다.
+  - 다시 matches(3,4) 목록에서 p3에 해당하는 점 p4를 찾아 트랙을 (p1, p2, p3, p4)로 확장합니다.
+  - 이 과정을 더 이상 연결할 매칭이 없을 때까지 반복합니다.
+  - 이 과정을 모든 matches(1,2)의 대응점에 대해 수행하면, 여러 개의 다양한 길이를 가진 후보 트랙(putative tracks) 집합이 생성됩니다. 하지만 이 방법은 각 단계에서 작은 오차가 누적되어 '표류(drift)'가 발생할 수 있으며, 잘못된 매칭이 포함될 수 있습니다. 따라서 기하학적 검증이 반드시 필요합니다.
+
+#### 3단계: 다중 뷰 기하학을 이용한 강인한 검증 (Robust Geometric Verification)
+- 이 단계가 바로 제공해주신 Hartley & Zisserman 책의 이론이 결정적인 역할을 하는 부분입니다. 단순히 연결만 된 트랙은 기하학적으로 올바르다는 보장이 없습니다. 책의 Chapter 15와 16에서 설명하는 **삼중초점 텐서(Trifocal Tensor)**를 사용하면 3개 뷰에 걸친 대응점의 유효성을 매우 강력하게 검증할 수 있습니다.
+- Trifocal Tensor를 이용한 검증:
+  - Trifocal Tensor의 핵심 기능 중 하나는 전송(Transfer) 입니다 (책의 Section 15.3 참조).
+  - 두 뷰(예: view 1과 view 2)에서 대응점 (p1, p2)가 주어지면, Trifocal Tensor는 세 번째 뷰에서 해당 점 p3가 나타나야 할 정확한 위치 p3_predicted를 계산해낼 수 있습니다.
+  - 이는 2개 뷰에서 단지 'epipolar line 위에 있어야 한다'는 제약보다 훨씬 강력합니다. 이 원리를 이용해 다음과 같이 잘못된 트랙을 걸러낼 수 있습니다.
+- RANSAC 프레임워크 적용 (Algorithm 16.4 참조):
+  - 2단계에서 생성된 수많은 후보 트랙 중에서 무작위로 6개의 트랙을 샘플링합니다. (Trifocal Tensor는 최소 6개의 점 대응으로 계산할 수 있습니다 ).
+  - 이 6개의 트랙을 이용해 Trifocal Tensor T를 계산합니다.
+  - 계산된 T를 사용하여 나머지 모든 트랙들의 유효성을 검사합니다. 각 트랙 (p1, p2, p3)에 대해, p1과 p2를 이용해 세 번째 뷰의 점 위치 p3_predicted를 전송(transfer)합니다.
+  실제 측정된 p3와 예측된 p3_predicted 사이의 거리(재투영 오차)를 계산합니다. d(p3, p3_predicted).
+  - 이 거리가 미리 정해둔 임계값 t보다 작으면, 해당 트랙을 **정상값(inlier)**으로 간주합니다.
+  - 가장 많은 수의 inlier를 확보하는 Trifocal Tensor T를 최종 모델로 선택합니다.
+- 최종 대응점 트랙 확보:
+  - RANSAC 과정에서 가장 많은 지지를 받은 Trifocal Tensor 모델과 일관성을 보인 inlier 트랙들이 바로 우리가 찾던, 기하학적으로 검증된 최종 대응점 트랙이 됩니다.
+
+
+
+### cv2.sfm을 사용하기 위한 python 3.11 가상환경 새로 구축 (mast3r의 faiss-gpu 사용을 위해 CUDA 12.1로 설치)
 - [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)
 - `cv2.sfm` 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
 
-### cv2.sfm을 사용하기 위한 python 3.11 가상환경 새로 구축 (mast3r의 faiss-gpu 사용을 위해 CUDA 12.1로 설치)
 ```python
 # mast3r 설치
 conda create -n mast3r python=3.11 cmake=3.14.0 -y
