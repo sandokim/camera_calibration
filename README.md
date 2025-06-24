@@ -193,14 +193,16 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 |---poses_bounds.npy   
 ```
 
-# 할일
-### feature extraction을 dense하게 수행하는 알고리즘을 사용하고, feature matching을 수행하고, PnP 알고리즘으로 구한 카메라 포즈와 함께, 앞서 구한 feature matching으로 찾아진 correspondences가 2개 이상일 경우에도 triangulation하여 3D 포인트를 reconstruct하는 알고리즘을 구현해야하고, 추가적으로 카메라 포즈 및 3D 구조간의 정합 최적화를 위한 Bundle Adjustment(BA)를 수행해야만 함
+------------------------------------------------------------------------------------------------------------------
+# To do list
+- feature extraction을 dense하게 수행하는 알고리즘을 사용하고, feature matching을 수행하고, PnP 알고리즘으로 구한 카메라 포즈와 함께, 앞서 구한 feature matching으로 찾아진 correspondences가 2개 이상일 경우에도 triangulation하여 3D 포인트를 reconstruct하는 알고리즘을 구현해야하고, 추가적으로 카메라 포즈 및 3D 구조간의 정합 최적화를 위한 Bundle Adjustment(BA)를 수행해야만 함
 
-triangulate_from_known_poses_and_matches.py
-https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp
-cv2.sfm 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
+### Triangulation with more than 3 correspondences (cv2.sfm)
 
-### cv2.sfm을 사용하기 위한 python 3.12 가상환경 새로 구축 (C:/Users/maila/opencv/build/lib/python3/Release/cv2.cp312-win_amd64.pyd)
+- [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)
+- `cv2.sfm` 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
+
+### cv2.sfm을 사용하기 위한 python 3.12 가상환경 새로 구축
 ```python
 conda create -n opencv_sfm_py312 python=3.12 -y
 conda activate opencv_sfm_py312
@@ -217,6 +219,14 @@ pip uninstall -y opencv-python opencv-python-headless
 
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
 ```
+
+### Dense Matching Algorithm
+- [DUSt3R](https://github.com/naver/dust3r)
+- [MASt3R](https://github.com/naver/mast3r)
+- [DKM](https://github.com/Parskatt/DKM)
+
+DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 아래 수식으로 focal length를 예측 할 수 있습니다.
+
 
 ## 🔍 용어 정리: "Dense Reconstruction"
 Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장면의 표면을 조밀한 3D 포인트 클라우드 또는 mesh로 복원하는 것을 의미합니다.
