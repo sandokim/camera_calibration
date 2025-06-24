@@ -163,7 +163,6 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
         print("  - Triangulating 3D points...")
         
         # ================================================================= #
-        # ### 여기가 수정된 부분입니다 ###
         # sfm.triangulatePoints 함수는 각 뷰의 포인트를 (2, N) 형태로 기대합니다.
         # 기존의 (N, 2) 형태인 matches_im0과 matches_im1을 .T를 사용해 전치합니다.
         pts2d_pair = np.array([matches_im0.T, matches_im1.T], dtype=np.float64)
@@ -171,14 +170,14 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
 
         Ps_pair = [Ps[i], Ps[j]]
         point3d_mat = cv2.sfm.triangulatePoints(pts2d_pair, Ps_pair)
-        points_3d_pair = point3d_mat.T
+        points_3d = point3d_mat.T
 
         h_ref, w_ref, _ = images_cv[i].shape
         for k in range(num_matches):
             x, y = map(int, matches_im0[k])
             if 0 <= x < w_ref and 0 <= y < h_ref:
                 all_colors.append(images_cv[i][y, x][::-1])
-                all_points_3d.append(points_3d_pair[k])
+                all_points_3d.append(points_3d[k])
     
     if not all_points_3d:
         print("경고: 유효한 3D 포인트가 하나도 생성되지 않았습니다.")
