@@ -134,13 +134,12 @@ https://github.com/colmap/colmap/issues/428
             |---...
 ```
 
-# 아직 undistortion이 안된 images를 input 폴더에 넣고, convert.py를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
-# triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
-# 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 -> convert.py에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
-
-### 본인은 convert_to_COLMAP_fmt.py에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
-### **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음
-### 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음
+- 아직 undistortion이 안된 images를 input 폴더에 넣고, convert.py를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
+- triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
+- 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 -> convert.py에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
+- 본인은 convert_to_COLMAP_fmt.py에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
+-  **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음
+- 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음
 - BA는 기존의 3D 구조와 카메라 포즈를 정밀하게 정합하는 최적화 과정입니다.
 - 하지만, **초기 입력값(3D 점, 대응점, 포즈)**이 부정확하거나 부족하다면, BA는:
 - 오차를 줄이는 대신, 잘못된 방향으로 수렴하거나
@@ -162,7 +161,7 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 ## 카메라 내부파라미터 설정
 - image_undistorter는 이미지를 ideal pinhole camera 모델로 변환하는 과정에서, projection 중심(cx, cy) 기준으로 유효한 시야 영역만을 유지함.
 - 따라서 추정된 intrinsics의 cx, cy가 이미지 중심에서 크게 벗어난 경우, warped 영역이 이미지 밖으로 밀려 crop이 심하게 발생함
-### camera_calibration_intrinsics.py에서 체커보드 패턴으로 추정한 intrinsics인 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 대체하여서 crop이 심하게 되는 부분이 해결되었음
+- **camera_calibration_intrinsics.py에서 체커보드 패턴으로 추정한 intrinsics인 mtx에서 임의로 mtx[0,2] = W/2, mtx[1,2] = H/2로 대체하여서 crop이 심하게 되는 부분이 해결되었음**
 카메라의 **내부 파라미터(intrinsic parameters)**는 일반적으로 다음과 같은 세 가지 요소로 구성됩니다: 2D Translation Matrix, 2D Scaling Matrix, 그리고 2D Shear Matrix입니다.
 - 2D Translation Matrix는 **principal point(주점)**의 위치를 나타내며, 이는 이미지 좌표계에서 광축이 통과하는 점입니다. **대부분의 경우, 이 주점은 이미지의 중심에 위치한다고 가정합니다.**
 - 2D Shear Matrix는 이미지 축 간의 비직교성을 표현합니다. 그러나 실제 대부분의 카메라에서는 픽셀의 x, y축이 직교한다고 가정하기 때문에, 이 항은 무시되는 경우가 많습니다.
@@ -197,7 +196,7 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 # To do list
 - feature extraction을 dense하게 수행하는 알고리즘을 사용하고, feature matching을 수행하고, PnP 알고리즘으로 구한 카메라 포즈와 함께, 앞서 구한 feature matching으로 찾아진 correspondences가 2개 이상일 경우에도 triangulation하여 3D 포인트를 reconstruct하는 알고리즘을 구현해야하고, 추가적으로 카메라 포즈 및 3D 구조간의 정합 최적화를 위한 Bundle Adjustment(BA)를 수행해야만 함
 
-### Triangulation with more than 3 correspondences (cv2.sfm)
+## Triangulation with more than 3 correspondences (cv2.sfm)
 
 - [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)
 - `cv2.sfm` 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
@@ -220,7 +219,7 @@ pip uninstall -y opencv-python opencv-python-headless
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### Dense Matching Algorithm
+## Dense Matching Algorithm
 - [DUSt3R](https://github.com/naver/dust3r)
 - [MASt3R](https://github.com/naver/mast3r)
 - [DKM](https://github.com/Parskatt/DKM)
