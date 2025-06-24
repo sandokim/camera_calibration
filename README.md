@@ -213,15 +213,24 @@ pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https
 
 ## Dense Matching Algorithm
 - [DUSt3R](https://github.com/naver/dust3r)
+  - DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 focal length도 예측할 수 있습니다.
 - [MASt3R](https://github.com/naver/mast3r)
 - [DKM](https://github.com/Parskatt/DKM)
 
-DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 아래 수식으로 focal length를 예측 할 수 있습니다.
-일반적으로 Image Matching은 2D문제로 다뤄지고 있었습니다. 반면 이전 연구인 DUSt3R(이전글) 에서는 Transformer기반으로 두 이미지의 pixel과 3D pointmap의 correspondence 예측을 통해 3D공간상에서 Image Matching 문제를 풀었습니다.
+### 기존 Image Matching의 문제점 
+전통적인 이미지 매칭 기법은 일반적으로 세 단계로 구성됩니다:
+- (1) 키포인트 추출,
+- (2) 각 키포인트의 주변 영역으로부터 지역적으로 불변하는 descriptor를 추출,
+- (3) Feaeture Space에서 descriptor 간 거리 비교를 통해 키포인트 매칭 수행.
+- 이러한 방식은 조명 변화나 시점 변화에 비교적 강인하며, 적은 수의 키포인트만으로도 밀리초 단위의 빠른 매칭이 가능합니다. 그러나 전역적인 기하학적 문맥(geometric context)을 고려하지 않기 때문에, 반복 패턴이나 저텍스처 영역에서는 오차가 발생하기 쉽습니다.
+
+일반적으로 Image Matching은 2D문제로 다뤄지고 있었습니다. 반면 DUSt3R에서는 Transformer기반으로 두 이미지의 pixel과 3D pointmap의 correspondence 예측을 통해 3D공간상에서 Image Matching 문제를 풀었습니다.
+**하지만 DUSt3R이 3D Reconstruction 목적으로 만들어졌기에, 시점 변화엔 강인하지만 Image Matching에선 상대적으로 부정확합니다. MASt3R에서는 DUSt3R을 활용하여 Image Matching에 특화하는 방법에 관해 다룹니다.**
 
 ![image](https://github.com/user-attachments/assets/5ec51bfc-85d5-4bb6-b0ad-0ebffab5d600)
 
-위 그림은 논문 첫페이지에서 가져왔습니다. 2개 입력 이미지의 공통 영역이 아주 적음에도 불구하고, 2D문제가 아니라 3D문제로 풀었기 때문에, Image Matching이 잘 된다는 것을 보여주는 이미지인 것 같습니다. 어떻게 Image Matching을 3D문제로 풀어내는지 알아보겠습니다.
+위 그림은 MASt3R에서 가져왔습니다. 2개 입력 이미지의 공통 영역이 아주 적음에도 불구하고, 2D문제가 아니라 3D문제로 풀었기 때문에, Image Matching이 잘 된다는 것을 보여주는 이미지인 것 같습니다. 
+
 
 ## 🔍 용어 정리: "Dense Reconstruction"
 Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장면의 표면을 조밀한 3D 포인트 클라우드 또는 mesh로 복원하는 것을 의미합니다.
