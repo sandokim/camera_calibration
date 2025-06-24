@@ -136,7 +136,7 @@ The image reader can only take the parameters for a single camera. If you want t
 - `triangulated/sparse/0`에서 얻었던 `cameras.txt, images.txt, points3D.txt` -> `distorted/sparse/0`에 복사했음
 - 미리 COLMAP의 feature extraction, feature matching을 실행하여, `database.db`에 저장했었기 때문에, `convert.py`에서는 feature extraction, feature matching을 실행하지 않음 -> `convert.py`에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
 - 본인은 `convert_to_COLMAP_fmt.py`에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
-- BA는 기존의 3D 구조와 카메라 포즈를 정밀하게 정합하는 최적화 과정입니다.
+- BA는 기존의 3D 구조와 카메라 포즈를 정밀하게 정합하는 최적화 과정입니다. **bundle adjustment에서는 2D reprojection error를 최소화합니다.**
 -  **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음. 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음. 즉, **초기 입력값(3D 점, 대응점, 포즈)**이 부정확하거나 부족하다면, BA는 오차를 줄이는 대신, 잘못된 방향으로 수렴하거나 **과적합(overfitting)**의 형태로 수렴할 수 있음
 - 3D 점의 밀도가 충분하지 않을 경우, reconstruct된 3D 점들이 sparse하고, 장면 구조를 충분히 포괄하지 못하면 카메라 포즈 간 제약 조건이 약해짐. 대응점 기반 에러 최소화가 전체 장면 정합성으로 연결되지 않음. 이런 경우 BA를 수행해도 최적화에 충분한 정보가 부족하여, 결과가 무의미하거나 오히려 나빠질 수 있음
 
