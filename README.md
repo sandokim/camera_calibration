@@ -238,7 +238,7 @@ pip install cython
 cd submodules/asmk/cython/
 cythonize *.pyx
 cd ..
-conda install -c conda-forge faiss-gpu # faiss-gpu, containing both CPU and GPU indices, is available on Linux (x86-64 only) for CUDA 11.4 and 12.1
+conda install -c conda-forge faiss-gpu # faiss-gpu, containing both CPU and GPU indices, is available on Linux (x86-64 only) for CUDA 11.4 and 12.1 / For FRM, MASt3R pipeline internally uses Faiss library to store correspondences.
 pip install .  # or python3 setup.py build_ext --inplace
 cd ..
 
@@ -254,6 +254,8 @@ pip uninstall -y opencv-python opencv-python-headless
   - DUSt3R 기본 모델로 pixel별 3D point를 예측했었습니다. 이 관계를 기반으로 focal length도 예측할 수 있습니다.
 - [MASt3R](https://github.com/naver/mast3r)
   - [MASt3R and MASt3R-SfM Explanation: Image Matching and 3D Reconstruction Results](https://learnopencv.com/mast3r-sfm-grounding-image-matching-3d/?utm_source=chatgpt.com)
+  - In MASt3R, a pixel i in image 1 and a pixel j in image 2 are considered as true match if they correspond to the same ground truth 3D point. i.e. Each local descriptor in a image matches at max only a single descriptor in the other image. The network is trained to learn such descriptors while penalizing non-matching feature descriptors using InfoNCE loss which is much more effective than a simple 3D regression loss, as used in DUSt3R.
+  - MASt3R effectively handles extreme viewpoint differences upto 180 degrees-scenarios that can be sometimes ambiguous to humans. This remarkable performance is primarily attributed to MASt3R and DUSt3R’s 3D scene understanding and image matching techniques
 - [DKM](https://github.com/Parskatt/DKM)
 
 ### 기존 Image Matching의 문제점 
