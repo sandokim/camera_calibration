@@ -255,7 +255,12 @@ pip uninstall -y opencv-python opencv-python-headless
 - [MASt3R](https://github.com/naver/mast3r)
   - [MASt3R and MASt3R-SfM Explanation: Image Matching and 3D Reconstruction Results](https://learnopencv.com/mast3r-sfm-grounding-image-matching-3d/?utm_source=chatgpt.com)
   - In MASt3R, a pixel i in image 1 and a pixel j in image 2 are considered as true match if they correspond to the same ground truth 3D point. i.e. Each local descriptor in a image matches at max only a single descriptor in the other image. The network is trained to learn such descriptors while penalizing non-matching feature descriptors using InfoNCE loss which is much more effective than a simple 3D regression loss, as used in DUSt3R.
-  - MASt3R effectively handles extreme viewpoint differences upto 180 degrees-scenarios that can be sometimes ambiguous to humans. This remarkable performance is primarily attributed to MASt3R and DUSt3R’s 3D scene understanding and image matching techniques
+  - MASt3R effectively handles extreme viewpoint differences upto 180 degrees-scenarios that can be sometimes ambiguous to humans. This remarkable performance is primarily attributed to MASt3R and DUSt3R’s 3D scene understanding and image matching techniques.
+  <p align="center">
+    <img src="https://github.com/user-attachments/assets/58dfdbfd-2c49-4a7c-bd21-ff1b696b7f59" width="600"/>
+  </p>
+  <p align="center"><em>MASt3R performance on Hard Cases</em></p>
+
 - [DKM](https://github.com/Parskatt/DKM)
 
 ### 기존 Image Matching의 문제점 
