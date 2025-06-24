@@ -84,12 +84,11 @@ scene/face/images/camX에 들어있는 image의 이름을 extrinsics.json에 맞
 - **출력:** cameras.txt, images.txt, points3D.txt(empty)
 
 
-### 4. sparse/0/ 폴더 생성 후 3.에서 출력한 cameras.txt, images.txt, points3D.txt(empty)를 복사
-https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses
-If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a cameras.txt, points3D.txt, and images.txt under a new folder:
+### 4. [sparse/0/ 폴더 생성 후 3.에서 출력한 cameras.txt, images.txt, points3D.txt(empty)를 복사](https://colmap.github.io/faq.html#reconstruct-sparse-dense-model-from-known-camera-poses)
+If the camera poses are known and you want to reconstruct a sparse or dense model of the scene, you must first manually construct a sparse model by creating a `cameras.txt, points3D.txt`, and `images.txt` under a new folder:
 
-python convert_to_COLMAP_fmt.py를 실행하면 다음과 같은 폴더가 생성되고, triangulation이 수행되어, triangulated/sparse/0 폴더가 생성됨
-COLMAP의 model_convert를 통해 triangulated/sparse/0 폴더에 생성된 bin 파일을 txt 파일 형식으로도 변환하여 저장
+`python convert_to_COLMAP_fmt.py`를 실행하면 다음과 같은 폴더가 생성되고, triangulation이 수행되어, `triangulated/sparse/0` 폴더가 생성됨
+COLMAP의 `model_convert`를 통해 `triangulated/sparse/0` 폴더에 생성된 `bin` 파일을 `txt` 파일 형식으로도 변환하여 저장
 
 ```python
 +── manually/created/sparse/model
@@ -111,15 +110,14 @@ The points3D.txt file should be empty while every other line in the images.txt s
 
 COLMAP은 .txt 파일 기반의 모델을 GUI에서 직접 사용하지 않습니다. 대신 database.db를 직접 구성하거나 변환하여 사용하는 것이 유일한 방법입니다. GUI/CLI 모두 동일하게 database.db → 모든 이미지, 카메라, feature 정보 사용
 
-The image reader can only take the parameters for a single camera. If you want to specify the parameters for multiple cameras, you would have to modify the SQLite database directly. This should be easy by modifying the scripts/python/database.py script.
+The image reader can only take the parameters for a single camera. If you want to specify the parameters for multiple cameras, you would have to modify the SQLite database directly. This should be easy by modifying the `scripts/python/database.py` script.
 
 #### Question: How to format cameras.txt for Reconstruct sparse/dense model from known camera poses #428 
-different cameras with different intrinsics, multiple cameras의 parameters를 지정하려면 SQLite database를 직접 수정해야하고, 이는 `colmap/scripts/python/database.py` 스크립트로 가능하다
-https://github.com/colmap/colmap/issues/428
+[different cameras with different intrinsics, multiple cameras의 parameters를 지정하려면 SQLite database를 직접 수정해야하고, 이는 `colmap/scripts/python/database.py` 스크립트로 가능하다.](https://github.com/colmap/colmap/issues/428)
 
 #### gaussian_splatting을 위해선 convert_to_COLMAP_fmt.py에서 OpenCV 카메라 모델을 사용하였기에, intrinsics를 사용하여, undistortion한 이미지를 사용하여야 함
-- undistortion이 아직 안된 이미지들을 -> multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/input 에 넣기
-- multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/distorted 폴더 안에 database.db와 triangulated/sparse/0 폴더를 복사
+- undistortion이 아직 안된 이미지들을 -> `multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/input` 에 넣기
+- `multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort/distorted` 폴더 안에 `database.db`와 `triangulated/sparse/0` 폴더를 복사
 
 ```python
 <location>
@@ -134,21 +132,13 @@ https://github.com/colmap/colmap/issues/428
             |---...
 ```
 
-- 아직 undistortion이 안된 images를 input 폴더에 넣고, convert.py를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
-- triangulated/sparse/0에서 얻었던 cameras.txt, images.txt, points3D.txt -> distorted/sparse/0에 복사했음
-- 미리 COLMAP의 feature extraction, feature matching을 실행하여, database.db에 저장했었기 때문에, convert.py에서는 feature extraction, feature matching을 실행하지 않음 -> convert.py에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
-- 본인은 convert_to_COLMAP_fmt.py에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
--  **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음
-- 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음
+- 아직 undistortion이 안된 images를 input 폴더에 넣고, `convert.py`를 실행하면 undistorted된 이미지들은 images 폴더에 생성됨
+- `triangulated/sparse/0`에서 얻었던 `cameras.txt, images.txt, points3D.txt` -> `distorted/sparse/0`에 복사했음
+- 미리 COLMAP의 feature extraction, feature matching을 실행하여, `database.db`에 저장했었기 때문에, `convert.py`에서는 feature extraction, feature matching을 실행하지 않음 -> `convert.py`에서 skip matching을 하면 feature extraction, feature matching, mapper((SfM & triangulation) + bundle adjustment)을 실행하지 않음
+- 본인은 `convert_to_COLMAP_fmt.py`에서 feature extraction, feature matching을 수행하고, 미리 PnP 알고리즘을 통해 계산한 카메라 포즈를 주었고, 이 카메라 포즈를 사용하여 point triangulator를 수행하였지만, bundle adjustment는 실행하지 않았음 -> bundle adjustment도 추가하자
 - BA는 기존의 3D 구조와 카메라 포즈를 정밀하게 정합하는 최적화 과정입니다.
-- 하지만, **초기 입력값(3D 점, 대응점, 포즈)**이 부정확하거나 부족하다면, BA는:
-- 오차를 줄이는 대신, 잘못된 방향으로 수렴하거나
-- **과적합(overfitting)**의 형태로 수렴할 수 있음
-- 3D 점의 밀도가 충분하지 않을 경우
-- reconstruct된 3D 점들이 sparse하고, 장면 구조를 충분히 포괄하지 못하면:
-- 카메라 포즈 간 제약 조건이 약해짐
-- 대응점 기반 에러 최소화가 전체 장면 정합성으로 연결되지 않음
-- 이런 경우 BA를 수행해도 최적화에 충분한 정보가 부족하여, 결과가 무의미하거나 오히려 나빠질 수 있음
+-  **Bundle Adjustment(BA)**를 수행하지 않으면 포즈 및 3D 구조 간의 정합 최적화가 이루어지지 않음. 단, bundle adjustment는 feature matching에서 찾아진 대응점 관계가 부정확하면, triangulation으로 찾아진 3D 점들의 위치도 부정확해질 수 있고, bundle adjustment 결과도 부정확해질 수 있음. 즉, **초기 입력값(3D 점, 대응점, 포즈)**이 부정확하거나 부족하다면, BA는 오차를 줄이는 대신, 잘못된 방향으로 수렴하거나 **과적합(overfitting)**의 형태로 수렴할 수 있음
+- 3D 점의 밀도가 충분하지 않을 경우, reconstruct된 3D 점들이 sparse하고, 장면 구조를 충분히 포괄하지 못하면 카메라 포즈 간 제약 조건이 약해짐. 대응점 기반 에러 최소화가 전체 장면 정합성으로 연결되지 않음. 이런 경우 BA를 수행해도 최적화에 충분한 정보가 부족하여, 결과가 무의미하거나 오히려 나빠질 수 있음
 
 ### convert.py에서는 feature extraction, feature matching, mapper 가 수행되었고, mapper는 카메라 포즈 계산 (SfM)과 triangulation을 수행한 후에 (local+global) bundle adjustment를 수행함
 
@@ -174,8 +164,10 @@ python convert.py -s multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scen
 - 대신, undistorted 결과에 대응하는 PINHOLE 모델이 별도 파일(cameras.txt 등)에 생성될 뿐입니다.
 
 ### poses_bounds.npy 생성
+```python
 git clone https://github.com/Fyusion/LLFF
 python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release/scene/myface_undistort
+```
 
 ### GS 학습 성공!
 ```python
