@@ -279,3 +279,20 @@ Dense reconstruction은 일반적으로 MVS (Multi-View Stereo) 를 통해 장�
 
 ### 흔한 혼동: Dense feature 사용 = dense reconstruction?
 어떤 연구나 구현에서는 dense feature matcher (e.g., LoFTR)만 사용해도 이를 "dense reconstruction"이라 부르는 경우가 있습니다. 하지만 엄밀히 보면 이건: dense correspondences 기반의 SfM 또는 dense SfM 이라고 부르는 게 더 정확합니다.
+
+## 🔍 용어 정리: Map-free relocalization
+Map-free relocalization은 기존의 지도 없이 주어진 이미지에서 카메라의 위치 및 방향(6DoF pose) 을 추정하는 문제입니다.
+즉, SLAM이나 SfM으로 미리 구축된 3D map 없이, 오직 이미지 쌍(또는 다중 이미지)만으로 상대 위치를 추정합니다.
+
+#### 🧠 Map-free relocalization은은 왜 어려운가?
+- 지도 없이 절대 위치나 스케일을 알 수 없음
+- 이미지 간 대응점만으로 metric scale의 정확한 위치 추정이 어려움
+- 다양한 시점 변화(viewpoint change) 에 강인해야 함
+
+#### MASt3R -> dense image matching & metric scale 3D pose estimation
+- MASt3R는 dense image matching과 metric-scale 3D 추정을 동시에 달성하여, map 없이도 정확한 pose estimation이 가능하도록 설계되었습니다.
+- 즉, 3D geometry 없이도 이미지 간의 대응점과 카메라 포즈를 추정할 수 있어 Map-free relocalization에 적합합니다.
+
+#### 🧭 기존 relocalization과의 차이
+- Map-based Relocalization:	기존 3D 모델 또는 포인트 클라우드 필요
+- Map-free Relocalization:	사전 지도 없이 이미지 간 대응만으로 포즈 추정
