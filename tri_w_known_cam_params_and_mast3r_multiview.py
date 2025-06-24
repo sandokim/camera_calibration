@@ -3,21 +3,18 @@ import sys
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 import cv2
 import torch
-from PIL import Image
-from collections import defaultdict
+from matplotlib import pyplot as pl
 
 # MASt3R 및 DUST3R 관련 모듈 임포트
+# Make sure the paths to the submodules are correct.
 sys.path.insert(0, os.path.abspath("submodules/mast3r"))
 from submodules.mast3r.mast3r.model import AsymmetricMASt3R
 from submodules.mast3r.mast3r.fast_nn import fast_reciprocal_NNs
 from submodules.mast3r.dust3r.dust3r.inference import inference
 from submodules.mast3r.dust3r.dust3r.utils.image import load_images as load_images_for_mast3r
-
-# 3D 시각화를 위한 라이브러리
-from mpl_toolkits.mplot3d import Axes3D
 
 # ----- 설정 -----
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -31,6 +28,8 @@ CAMERAS = ['cam0', 'cam1', 'cam2', 'cam3']
 INTRINSICS_PATHS = [os.path.join(IMAGE_DIR, cam, "intrinsics.json") for cam in CAMERAS]
 EXTRINSICS_PATH = os.path.join(BASE_DIR, "extrinsics.json")
 
+# 2D-2D 매칭결과 시각화할 개수
+n_viz = 20
 # 삼각측량을 위한 최소 뷰 개수 설정
 MIN_VIEWS_FOR_TRIANGULATION = 2
 
@@ -95,12 +94,11 @@ def load_extrinsics(image_rel_paths: List[str]) -> List[np.ndarray]:
         Ps.append(np.array(data[rel_key])[:3, :])
     return Ps
 
-
-# ----- MASt3R을 이용한 특징 추출 및 트랙 생성 (개선된 로직) -----
+# ----- MASt3R을 이용한 특징 추출 및 트랙 생성 -----
 def extract_mast3r_tracks(image_paths: List[str], model: AsymmetricMASt3R, device: torch.device) -> List[List[Tuple[float, float]]]:
     n_views = len(image_paths)
     ref_view_idx = 0  # 0번 카메라를 기준으로 설정
-    all_matches = {}
+    all_pairwise_matches = {}
 
     # 1. 기준 뷰와 다른 모든 뷰 간의 매칭 수행
     for j in range(ref_view_idx + 1, n_views):
@@ -111,49 +109,90 @@ def extract_mast3r_tracks(image_paths: List[str], model: AsymmetricMASt3R, devic
         with torch.no_grad():
             output = inference([tuple(images_pair)], model, device, batch_size=1, verbose=False)
         
-        desc1, desc2 = output['pred1']['desc'].squeeze(0).detach(), output['pred2']['desc'].squeeze(0).detach()
-        matches_im0, matches_im1 = fast_reciprocal_NNs(desc1, desc2)
+        view1, pred1 = output['view1'], output['pred1']
+        view2, pred2 = output['view2'], output['pred2']
 
-        pts_i, pts_j = matches_im0, matches_im1
+        desc1, desc2 = pred1['desc'].squeeze(0).detach(), pred2['desc'].squeeze(0).detach()
 
-        if len(pts_i) < 8: continue
-        F, mask = cv2.findFundamentalMat(pts_i, pts_j, cv2.FM_RANSAC, 0.5, 0.999)
-        if mask is None: continue
+        matches_im0, matches_im1 = fast_reciprocal_NNs(desc1, desc2, subsample_or_initxy1=8,
+                                                       device=device, dist='dot', block_size=2**13)
 
-        inlier_mask = mask.ravel() == 1
-        all_matches[(i, j)] = (pts_i[inlier_mask], pts_j[inlier_mask])
-        print(f"    - Found {len(all_matches[(i,j)][0])} inlier matches for pair ({i}, {j})")
+        H0, W0 = view1['true_shape'][0]
+        valid_matches_im0 = (matches_im0[:, 0] >= 3) & (matches_im0[:, 0] < int(W0) - 3) & \
+                            (matches_im0[:, 1] >= 3) & (matches_im0[:, 1] < int(H0) - 3)
+
+        H1, W1 = view2['true_shape'][0]
+        valid_matches_im1 = (matches_im1[:, 0] >= 3) & (matches_im1[:, 0] < int(W1) - 3) & \
+                            (matches_im1[:, 1] >= 3) & (matches_im1[:, 1] < int(H1) - 3)
+
+        valid_matches = valid_matches_im0 & valid_matches_im1
+        matches_im0, matches_im1 = matches_im0[valid_matches], matches_im1[valid_matches]
+    
+        # ### all matches... ###
+        # Store all found matches for later track construction.
+        # The key is the pair of view indices, and the value is the set of matching points.
+        all_pairwise_matches[(i, j)] = (matches_im0, matches_im1)
+    
+        # visualize a few matches
+        num_matches = matches_im0.shape[0]
+        print(f'    # of matches: {num_matches}')
+        if num_matches > n_viz:
+            match_idx_to_viz = np.round(np.linspace(0, num_matches - 1, n_viz)).astype(int)
+            viz_matches_im0, viz_matches_im1 = matches_im0[match_idx_to_viz], matches_im1[match_idx_to_viz]
+
+            image_mean = torch.as_tensor([0.5, 0.5, 0.5], device='cpu').reshape(1, 3, 1, 1)
+            image_std = torch.as_tensor([0.5, 0.5, 0.5], device='cpu').reshape(1, 3, 1, 1)
+
+            viz_imgs = []
+            for k, view in enumerate([view1, view2]):
+                rgb_tensor = view['img'] * image_std + image_mean
+                viz_imgs.append(rgb_tensor.squeeze(0).permute(1, 2, 0).cpu().numpy())
+
+            H0, W0, H1, W1 = *viz_imgs[0].shape[:2], *viz_imgs[1].shape[:2]
+            img0 = np.pad(viz_imgs[0], ((0, max(H1 - H0, 0)), (0, 0), (0, 0)), 'constant', constant_values=0)
+            img1 = np.pad(viz_imgs[1], ((0, max(H0 - H1, 0)), (0, 0), (0, 0)), 'constant', constant_values=0)
+            img = np.concatenate((img0, img1), axis=1)
+            pl.figure()
+            pl.imshow(img)
+            cmap = pl.get_cmap('jet')
+            for k in range(n_viz):
+                (x0, y0), (x1, y1) = viz_matches_im0[k].T, viz_matches_im1[k].T
+                pl.plot([x0, x1 + W0], [y0, y1], '-+', color=cmap(k / (n_viz - 1)), scalex=False, scaley=False)
+            pl.show(block=True)
+
+    
+    '''
+    multiview correspondences를 구하는 걸 목표로 하자
+    '''
 
     # 2. 기준 뷰 기반으로 트랙 생성
-    print("\n  - Building tracks based on reference view...")
-    
-    # 기준 뷰의 점(튜플)을 키로, 트랙 리스트의 인덱스를 값으로 가짐
-    ref_point_to_track_idx = {}
-    tracks = []
-    
-    for j in range(ref_view_idx + 1, n_views):
-        if (ref_view_idx, j) not in all_matches:
-            continue
+    print("  - Building multi-view tracks from pairwise matches...")
+    # This dictionary will merge tracks based on the coordinates of their point in the reference view.
+    # Key: A tuple of rounded coordinates (x, y) from the reference view.
+    # Value: The track itself, which is a list like [pt0, pt1, pt2, ...], where some can be None.
+    track_dict = {}
+
+    for (i, j), (ref_pts, other_pts) in all_pairwise_matches.items():
+        for ref_pt, other_pt in zip(ref_pts, other_pts):
+            # Use rounded integer coordinates of the reference point as a key to group matches.
+            # This handles small floating point inaccuracies.
+            ref_pt_key = tuple(np.round(ref_pt).astype(int))
             
-        pts_ref, pts_j = all_matches[(ref_view_idx, j)]
-        
-        for p_ref, p_j in zip(pts_ref, pts_j):
-            p_ref_tuple = tuple(p_ref)
-            
-            if p_ref_tuple not in ref_point_to_track_idx:
-                # 새로운 점이면 새로운 트랙 생성
-                new_track_id = len(tracks)
+            if ref_pt_key not in track_dict:
+                # If this is the first time we see this point in the reference image,
+                # create a new track for it.
                 new_track = [None] * n_views
-                new_track[ref_view_idx] = p_ref
-                new_track[j] = p_j
-                tracks.append(new_track)
-                ref_point_to_track_idx[p_ref_tuple] = new_track_id
-            else:
-                # 기존에 있던 점이면 해당 트랙에 추가
-                track_id = ref_point_to_track_idx[p_ref_tuple]
-                tracks[track_id][j] = p_j
-                
+                # Store the original, more precise floating-point coordinates in the track.
+                new_track[i] = tuple(ref_pt)
+                track_dict[ref_pt_key] = new_track
+            
+            # Add the corresponding point from the other view to its track.
+            track_dict[ref_pt_key][j] = tuple(other_pt)
+
+    # The final list of tracks is the collection of all values from our dictionary.
+    tracks = list(track_dict.values())
     return tracks
+
 
 # ----- 전체 파이프라인 -----
 def main():
@@ -192,12 +231,26 @@ def main():
         pts2d = [np.array(pt, dtype=np.float64).reshape(2, 1) for _, pt in views]
         Ps_track = [Ps[i] for i, _ in views]
         
-        point3d_mat = cv2.sfm.triangulatePoints(pts2d, Ps_track)
+        # cv2.triangulatePoints is for 2 views only. cv2.sfm.triangulatePoints handles N-views.
+        # The function signature was changed in some OpenCV versions.
+        # This checks for the expected interface.
+        try:
+            point3d_mat = cv2.sfm.triangulatePoints(np.array(pts2d), Ps_track)
+        except TypeError:
+            # Fallback for older OpenCV versions that might take a simple list of mats
+            point3d_mat = cv2.sfm.triangulatePoints(pts2d, Ps_track)
+
         points_3d.append(point3d_mat.flatten())
 
         first_valid_view_idx, pt0 = views[0]
         x, y = map(int, pt0)
-        colors.append(images_cv[first_valid_view_idx][y, x][::-1])
+        # Ensure coordinates are within image bounds before accessing pixel color
+        h, w, _ = images_cv[first_valid_view_idx].shape
+        if x < w and y < h:
+            colors.append(images_cv[first_valid_view_idx][y, x][::-1]) # BGR to RGB
+        else: # If out of bounds, append a default color like black
+            colors.append([0, 0, 0])
+
 
     if not points_3d:
         print("  - 유효한 3D 포인트가 생성되지 않았습니다.")
