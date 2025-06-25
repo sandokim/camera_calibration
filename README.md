@@ -480,7 +480,10 @@ FixedViewIDs: View IDs for fixed camera pose, specified as a vector of nonnegati
 Output Arguments
 reprojectionErrors: Reprojection errors, returned as an M-element vector. The function projects each world point back into each camera. Then, in each image, the function calculates the reprojection error as the distance between the detected and the reprojected point. The reprojectionErrors vector contains the average reprojection error for each world point.
 
-
+  <p align="center">
+    <img src="https://github.com/user-attachments/assets/4b6664c1-f424-465f-b27f-0bc74c9ca0ed" width="600"/>
+  </p>
+  <p align="center"><em>Reprojection Errors</em></p>
 
 
 
