@@ -638,6 +638,8 @@ for track in tracks.values():
      store 3D point (+ color)
 ```
 
+
+
 ### cv2.sfm을 사용하기 위한 python 3.11 가상환경 새로 구축 (mast3r의 faiss-gpu 사용을 위해 CUDA 12.1로 설치)
 - [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)
 - `cv2.sfm` 모듈은 OpenCV의 contrib 모듈 중 하나이며, 기본 OpenCV 설치에는 포함되어 있지 않습니다. cv2.sfm을 사용하려면 OpenCV를 소스에서 직접 빌드해야함
@@ -690,6 +692,12 @@ pip uninstall -y opencv-python opencv-python-headless
   - DUSt3R and MASt3R have excellent 3D scene understanding and performs in the wild zero shot. From the predicted 3D geometry focal length can be recovered making these models as a standalone and go to methods for 3D scene reconstruction and pose estimation. **Their success lies in firmly rooting image matching and finding correspondences as 3D in nature.** MASt3R predicts 3D correspondences, even in regions where there aren’t much camera motion or for neatly opposing view of the scene.
   - DUSt3R과 MASt3R의 성공은 이미지 매칭과 대응점 찾기를 본질적으로 3D 문제로 단단히 정립한 데에 있습니다. 
   - MASt3R는 카메라 움직임이 거의 없는 영역이나 장면의 정반대 시점에서도 3D 대응점을 예측할 수 있습니다.
+
+  - [MASt3R pointcloud -> python mast3r/demo.py](https://github.com/naver/mast3r/issues/30)
+    - pip install faiss-cpu
+    - mast3r/mast3r/demo.py -> scene.export(file_obj=outfile, file_type='ply') # pointcloud ply 저장
+    - python submodules/mast3r/demo.py --model_name MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric
+
 
 - [DKM](https://github.com/Parskatt/DKM)
 
