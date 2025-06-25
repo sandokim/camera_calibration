@@ -224,6 +224,265 @@ python LLFF/imgs2poses.py multicam/build/Desktop_Qt_6_9_0_MSVC2022_64bit-Release
 - feature extraction을 dense하게 수행하는 알고리즘을 사용하고, feature matching을 수행하고, PnP 알고리즘으로 구한 카메라 포즈와 함께, 앞서 구한 feature matching으로 찾아진 correspondences가 2개 이상일 경우에도 triangulation하여 3D 포인트를 reconstruct하는 알고리즘을 구현해야하고, 추가적으로 카메라 포즈 및 3D 구조간의 정합 최적화를 위한 Bundle Adjustment(BA)를 수행해야만 함
 
 ## Triangulation with more than 3 correspondences (cv2.sfm)
+### [MATLAB triangulateMultiview](https://www.mathworks.com/help/vision/ref/triangulatemultiview.html)
+triangulateMultiview 3-D locations of world points matched across multiple images
+
+worldPoints = triangulateMultiview(pointTracks,cameraPoses,intrinsics) returns the locations of 3-D world points that correspond to points matched across multiple images taken with calibrated cameras. **pointsTracks specifies an array of matched points**. cameraPoses and intrinsics specify camera pose information and intrinsics, respectively. The function does not account for lens distortion.
+[worldPoints,reprojectionErrors] = triangulateMultiview(__) additionally returns the mean reprojection error for each 3-D world point using all input arguments in the priro syntax.
+[worldPoints,reprojectionErrors,validIndex] = triangulateMultiview(__) additionally returns the indices of valid and invalid world points. Valid points are locaed in front of the cameras.
+
+Load images in the workspace
+**Load precomputed cameraparameters** --> Get camera intrinsics parameters
+Compute features for the first images.
+```python
+I = im2gray(readimage(imds,1));;
+**I = undistortImage(I,intrinsics);**
+pointsPrev = detectSURFFeatures(I);;
+[featuresPrev,pointsPrev] = extractFeatures(I,pointsPrev);;
+```
+
+Load camera poses.
+Creae an imageviewset object
+vSet = imageviewset;
+vSet = addView(vSet,1,absPoses(1),Points=pointsPrev);
+
+Compute features and matches for the rest of the images.
+for i = 2:numel(imds.Files)
+  I = im2gray(readimage(imds,i));
+  I = undistortImage(I,intrinsics);
+  points = detectSURFFeatures(I);
+  [features,points] = extractFeatures(I,points);
+  vSet = addView(vSet,i,absPoses(i),Points=points);
+  pairsIdx = matchFeatures(featuresPrev,features,MatchThreshold=5);
+  vSet = addConnection(vSet,i-1,i,Matches=pairsIdx);
+  featuresPrev = features;
+end
+
+Find point tacks.
+tracks = findTracks(vSet);
+get camera poses.
+caneraPoses = poses(vSet);
+Find 3-D world points.
+[xyzPoints,errors] = triangulateMultiview(tracks,cameraPoses,intrinsics);
+z = xyzPoints(:,3);
+idx = errors < 5 & z > 0 & z < 20;
+pcshow(xyzPoints(idx, :),AxesVisibility="on",VerticalAxis="y",VerticalAxisDir="down",MarkerSize=30);
+hold on
+plotCamera(cameraPoses, Size=0.2);
+hold off
+
+### [MATLAB matchFeatures](https://www.mathworks.com/help/vision/ref/matchfeatures.html?searchHighlight=matchFeatures&s_tid=srchtitle_support_results_1_matchFeatures)
+matchFeatures Find matching features
+
+indexPairs = matchFeatures(features1,features2) returns indices of the matching features in the two input feature sets. The input feature must be either binaryFeatures objects or matrices.
+[indexPairs,matchmetric] = matchFeatures(features1,features2) also returns the distance between the matching features, indexed by indexPairs.
+[indexPairs,matchmetric] = matchFeatures(features1,features2,Name=Value) specifies options using one or more name-value arguments in addition to any combination of arguments from previous syntaxes. For example, matchFeatures(__,Method="Exhaustive") sets the matching method to Exhaustive.
+
+Find Corresponding Interest Points Between Pair of Images
+Find corresponding interest points between a pair of images using local neighborhoods and the Harris algorithm.
+Read the stereo images.
+I1 = im2gray(imread("viprectification_deskLeft.png"));
+I2 = im2gray(imread("viprectification_deskRight.png"));
+
+Find the corners.
+points1 = detectHarrisFeatures(I1);
+points2 = detectHarrisFeatures(I2);
+
+Extract the neighborhood features.
+[features1,valid_points1] = extractFeatures(I1,points1);
+[features2,valid_points2] = extractFeatures(I2,points2);
+
+Match the features.
+indexPairs = matchFeatures(features1,features2);
+
+Retrieve the locations of the corresponding points for each image.
+matchedPoints1 = valid_points1(indexPairs(:,1),:);
+matchedPoints2 = valid_points2(indexPairs(:,2),:);
+
+Visualize the corresponding points. You can see the effect of translation between the two images despite several eeroneous matches.
+figure;
+showMatchedFeatures(I1,I2,matchedPoints1,matchedPoints2);
+
+Find Corresponding Points Using SURF Features
+Read the two images.
+I1 = imread("cameraman.tif");
+I2 = imresize(imrotate(I1,-20),1.2);
+
+Find the SURF features.
+points1 = detectSURFFeatures(I1);
+points2 = detectSURFFeatures(I2);
+
+Extract the features.
+[f1,vpts1] = extractFeatures(I1,points1);
+[f2,vpts2] = extractFeatures(I2,points2);
+
+Retrieve the locations of matched points.
+indexPairs = matchFeatures(f1,f2);
+matchedPoints1 = vpts1(indexPairs(:,1));
+matchedPoints2 = vpts2(indexPairs(:,2));
+
+Display the matching points. The data still includes several outliers, but you can see the effects of rotation and scaling on the display of matched features.
+
+figure; showMatchedFeatures(I1,I2,matchedPoints1,matchedPoints2);
+legend("matched points 1","matched points 2");
+
+### [MATLAB findTracks](https://www.mathworks.com/help/vision/ref/imageviewset.findtracks.html)
+
+findTracks -> Find matched points across multiple views
+
+tracks = findTracks(vSet) finds and returns point tracks across multiple views in the view set, vSet. Each track contains 2-D projections of the same 3-D world point.
+tracks = findTracks(vSet, viewIds) finds point tracks across a subset of views specified by viewIds.
+tracks = findTracks(__, 'MinTrackLength', trackLength) specifies the minimum length of the tracks.
+
+Compute features for the first image.
+I = im2gray(readimage(images,1));
+pointsPrev = detectSURFFeatures(I);
+[featuresPrev,pointsPrev] = extractFeatures(I,pointsPrev)
+
+Create an image view set and add one view to the set.
+vSet = imageviewset;
+Vset = addView(vSet,1,'Features',featuresPrev,'Points',pointsPrev);
+
+Compute features and matches for the rest of the images.
+for i = 2:numel(images.Files)
+  I = im2gray(readimage(images,i));
+  points = detectSURFFeatures(I);
+  [features, points] = extractFeatures(I,points);
+  vSet = addView(vSet,i,'Features',features,'Points',points);
+  pairsIdx = matchFeatures(featuresPrev,features);
+  vSet = addConnection(vSet,i-1,i,'Matches',pairsIdx);
+  featuresPrev = features;
+end
+
+Find point tracks across views in the image view set.
+tracks = findTracks(vSet);
+
+vSet -- Image view set 
+Image view set, specified as an imageviewset object.
+
+### [MATLAB imageviewset](https://www.mathworks.com/help/vision/ref/imageviewset.html)
+Manage data for structure-from-motion, visual odometry, and visual SLAM
+
+The imageviewset object manages view attributes and pairwise connections between views of data used in structure-from-motion, visual odometry, and simultaneous localization and mapping (SLAM) data. View attributes can be feature descriptors, feature points, or absolute camera poses. Pairwise connections between views can be point matches, relative camera poses, or an information matrix. You can also use this object to find point tracks used by triangulateMultiview and bundleAdjustment functions.
+
+vSet = imageviewset() returns an imageviewset object. You can add views and connections using the addView and addConnection object functions.
+
+### [MATLAB addView](https://www.mathworks.com/help/vision/ref/imageviewset.addview.html)
+addView add view to view set
+
+vSet = addView(vSet,viewID) adds the view specified by viewID to the view set, vSet.
+vSet = addView(vSet,viewID,absPose) specifies the absolute pose of the view.
+vSet = addView(__,Name,Value) specifies options using one or more name-value arguments in addition to any of the input argument combination in previous syntaxes.
+vSet = addView(vSet,viewTable) adds one or more views in the table specified by viewTable.
+
+Create an empty image view set.
+vSet = imageviewset;
+
+Detect interest points in the image.
+points = detectSURFFeatures(im2gray(I))
+
+Add the interest points as a view to the image view set.
+vSet = addView(vSet,1,'Points',points);
+
+### [MATLAB addConnection](https://www.mathworks.com/help/vision/ref/imageviewset.addconnection.html)
+addConnection Add connection between views in view set
+
+vSet = addConnection(vSet,viewId1,viewId2) adds a connection between views viewId1 and viewId2 to the view set, vSet.
+vSet = addConnection(vSet,viewId1,viewId2,relPose) specifies the relative pose of viewId2 with respect to viewId1.
+vSet = addConnection(vSet,viewId1,viewId2,relPose,infoMat) specifies the information matrix associated with the connection.
+vSet = addConnection(__,"Matches",featureMatches) specifies the indices of matched points between two views in addition to any of the input argument combinations in previous syntaxes.
+
+Create an empty image view set.
+vSet = imageviewset;
+
+Read two images into the workspace
+I1 = im2gray(imread(fullfile(imageDir,'image1.jpg')));
+I2 = im2gray(imread(fullfile(imageDir,'image2.jpg')));
+
+Detect interest points in each image.
+points1 = detectSURFFeatures(I1);
+points2 = detectSURFFeatures(I2);
+
+Extract feature descriptors from the interest points.
+[features1,validPoints1] = extractFeatures(I1,points1);
+[features2,validPoints2] = extractFeatures(I2,points2);
+
+Add teh features and points for the two images to the image view set.
+vSet = addView(vSet,1,'Features',features1,'Points',validPoints1);
+vSet = addView(vSet,2,'Features',features2,'Points',validPoints2);
+
+Match teh features between the two images.
+indexPairs = matchFeatures(features1,features2);
+
+Store the matched features as a connection in the image view set.
+vSet = addConnection(vSet,1,2,'Matches',indexPairs);
+
+### [MATLAB extractFeatures](https://www.mathworks.com/help/vision/ref/extractfeatures.html)
+extractFeatures Extract interest point descriptors
+
+[features,validPoints] = extractFeatures(I,points) returns **extracted feature vectors, also known as descriptor**, and their corresponding locations, from a binary or intensity image. The function derives the descriptors from pixels surrounding an interest point. The pixels represent and match features specified by a single-point location. Each single-point specifies the center location of a neighborhood. The method you use for descriptor extraction depends on the class of the input points.
+[features,validPoints] = extractFeatures(I,points,Name=Value) specifies options using one or more name-value arguments in addition to any combination of arguments from previous syntaxes. For example, extractFeatures(I,points,Method="Block") sets teh method to extract descriptor to Block.
+
+Extract Corner Features from an Image
+Read the image
+I = imread("cameraman.tif")
+ 
+Find and extract corner features from the image.
+corners = detectHarrisFeatures(I);
+[features,valid_corners] = extractFeatures(I,corners);
+
+Extract SURF Features from an Image
+Read image
+I = imread("camearman.tif")
+
+Find and extract features from the input image.
+points = detectSURFFeatures(I);
+[features,valid_points] = extractFeatures(I,points);
+
+
+### [MATLAB bundleAdjustment](https://www.mathworks.com/help/vision/ref/bundleadjustment.html)
+bundleAdjustment **Adjust collection of 3-D points and camera poses**
+
+[xyzRefinedPoints,refinedPoses] = bundleAdjustment(xyzPoints,pointTracks,cameraPoses,intrinsics) refines 3-D points and camera poses to minimize reprojection errors. The refinement procedure is a variant of the Levenberg-Marquardt algorithm. The function **uses the same global reference coordinate system to return both the 3-D points and camera poses.**
+[wpSetRefined,vSetRefined,pointIndex] = bundleAdjustment(wpSet,vSet,viewIds,intrinsics) refines 3-D points from the world point set, wpSet, and refines camera poses from the image view set, vSet. viewIds specify the camera poses in vSet to refine.
+[__,reprojectionErrors] = bundleAdjustment(__) returns the mean reprojection error for each 3-D world point, in addition to the arguments from the previous syntax.
+[__] = bundleAdjustment(__,Name=Value) specifies options using one or more name-value arguments in addition to any combination of arguments from previous syntaxes. For example, **MaxIterations=50 sets the number of iterations to 50**. Unspecified arguments have default values.
+
+Load data for initialization.
+data = load("globalBA.mat")
+Refine the camera poses and points.
+[xyzRefinedPoints,refinedPoses] = ...
+  bundleAdjustment(data.xyzPoints,data.pointTracks,data.cameraPoses,data.intrinsics);
+Display the 3-D points and camera poses before and after refinement.
+pcshowpair(pointCloud(data.xyzPoints), pointCloud(xyzRefinedPoints), ...
+    AxesVisibility="on", VerticalAxis="y", VerticalAxisDir="down", MarkerSize=40);
+hold on
+plotCamera(data.cameraPoses, Size=0.1, Color="m");
+plotCamera(refinedPoses, Size=0.1, Color="g");
+legend("Before refinement", "After refinement", color="w");
+
+Input Arguments
+xyzPoints: Unrefined 3-D points, specified as an M-by-3 matrix of [x y z] locations.
+pointTracks: Matching points across multiple images, specified as an N-element array of pointTrack objects. Each element contains two or more matching points across multiple images.
+cameraPoses: Camera pose information, specified as a two-column table with columns ViewId and AbsolutePose. The view IDs relate to the IDs of the objects in the pointTracks argument. You can use the poses object function to obtain cameraPoses table.
+intrinsics: Camera intrinsics, specified as a cameraIntrinsics object or an N-element array of cameraIntrinsics objects. N is the number of camera poses or the number of IDs in viewIDs. Use a single cameraIntrinsics object when images are captured using the same camera. Use a vector cameraIntrinsics objects when images are captured by different cameras.
+wpSet: 3-D world points, specified as a worldpointset object.
+vSet: Camera poses, specified as an imageviewset object.
+viewIDs: View identifiers, specified as an N-element array. The viewIDs represent which camera poses to refine specifying their related views in imageviewset.
+
+Name-Value Arguments
+MaxIterations: Maximum number of iterations before the Levenberg-Marquardt algorithm stops, specified as a positive integer.
+AbsoluteTolerance: Absolute termination tolerance of the mean squared reprojection error in pixels, specified as positive scalar.
+RelativeTolerance: Relative termination tolerance of the reduction in reprojection error between iterations, specified as positive scalar.
+PointsUndistorted: Flag to indicate lens distortion, specified as false or true. **When you set PointsUndistorted to false, the 2-D points in pointTracks or in vSet must be from images with lens distortion.** **To use undistorted points, first use the undistortImage function to remove distortions from the images, then set PointsUndistorted.**
+FixedViewIDs: View IDs for fixed camera pose, specified as a vector of nonnegative integers. Each ID corresponds to the ViewId of a fixed camera pose in cameraPoses. An empty value for FixedViewIDs means that all camera poses are optimized.
+
+Output Arguments
+reprojectionErrors: Reprojection errors, returned as an M-element vector. The function projects each world point back into each camera. Then, in each image, the function calculates the reprojection error as the distance between the detected and the reprojected point. The reprojectionErrors vector contains the average reprojection error for each world point.
+
+
+
+
 
 
 ### [OpenCV triangulatePoints 함수](https://docs.opencv.org/4.x/d0/dbd/group__triangulation.html)
