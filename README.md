@@ -487,7 +487,6 @@ reprojectionErrors: Reprojection errors, returned as an M-element vector. The fu
 
 
 
-
 ### [OpenCV triangulatePoints 함수](https://docs.opencv.org/4.x/d0/dbd/group__triangulation.html)
 - Triangulates the 3d position of 2d correspondences between several images. Reference: Internally it uses DLT method [119] 12.2 pag.312
 - [119] Richard Hartley and Andrew Zisserman. Multiple view geometry in computer vision. Cambridge university press, 2003.
@@ -557,6 +556,87 @@ reprojectionErrors: Reprojection errors, returned as an M-element vector. The fu
   - RANSAC 과정에서 가장 많은 지지를 받은 Trifocal Tensor 모델과 일관성을 보인 inlier 트랙들이 바로 우리가 찾던, 기하학적으로 검증된 최종 대응점 트랙이 됩니다.
 
 
+🎯 1. Multi-view Track 구조 준비하기
+우선 여러 뷰에서 같은 물체 지점에 대응하는 2D 포인트 그룹 (point track)을 구성해야 합니다.
+```python
+# 예시: track_id 0번은 다음과 같은 구조로 대응점을 가짐
+track = {
+    0: (x0, y0),  # view 0
+    1: (x1, y1),  # view 1
+    3: (x3, y3),  # view 3
+}
+```
+이런 트랙을 수십~수백 개 구성하면, 각 트랙에 대해 하나씩 삼각측량을 수행할 수 있습니다.
+
+🧠 어떻게 multi-view track을 구성할까?
+이건 MASt3R가 pairwise matching only를 제공하므로, N-view track을 얻기 위해선 특정 기준 뷰를 고정하고 순차적 연계로 트랙을 형성해야 합니다.
+예시 전략 (reference view 고정)
+```python
+reference_idx = 0
+tracks = {}  # track_id: {view_idx: (x, y)}
+track_id = 0
+
+for j in range(1, n_views):
+    matches_im0, matches_im1 = ...  # MASt3R로 얻은 matching 결과 (view 0 vs view j)
+
+    for k in range(len(matches_im0)):
+        pt0 = tuple(matches_im0[k])
+        ptj = tuple(matches_im1[k])
+
+        if pt0 not in pt_to_track_id:
+            pt_to_track_id[pt0] = track_id
+            tracks[track_id] = {reference_idx: pt0}
+            track_id += 1
+
+        tracks[pt_to_track_id[pt0]][j] = ptj
+```
+
+🧪 2. Triangulation 수행
+```python
+points_3d = []
+colors = []
+
+for track in tracks.values():
+    if len(track) < 3:  # 최소 3개 뷰 필요
+        continue
+
+    point2ds = []
+    projection_mats = []
+
+    for view_idx, pt in track.items():
+        pt_arr = np.array(pt, dtype=np.float32).reshape(2, 1)  # (2, 1)
+        point2ds.append(pt_arr)
+        projection_mats.append(Ps[view_idx].astype(np.float32))  # (3, 4)
+
+    point2ds_cv = [cv2.UMat(p) for p in point2ds]
+    proj_mats_cv = [cv2.UMat(P) for P in projection_mats]
+
+    point4d = cv2.sfm.triangulatePoints(point2ds_cv, proj_mats_cv)  # (4, 1)
+    point3d = cv2.convertPointsFromHomogeneous(point4d.T).reshape(-1)
+
+    points_3d.append(point3d)
+
+    # optional: 색상 추출
+    if 0 in track:
+        x, y = map(int, track[0])
+        colors.append(images_cv[0][y, x][::-1])  # RGB
+```
+
+🧱 전체 워크플로 정리
+```python
+1. reference view(i=0) fix
+2. for each j=1..N:
+     run MASt3R and get matches (i, j)
+     for each matched point:
+         track matching between i and j
+         if i-point exists in previous track: add j-point
+         else: make new track
+3. for each track with ≥3 views:
+     extract 2D points + corresponding P
+     call cv2.sfm.triangulatePoints
+     convert homogeneous → Euclidean
+     store 3D point (+ color)
+```
 
 ### cv2.sfm을 사용하기 위한 python 3.11 가상환경 새로 구축 (mast3r의 faiss-gpu 사용을 위해 CUDA 12.1로 설치)
 - [OPENCV_EXTRA_MODULES에 sfm이 포함되어 있음](https://github.com/opencv/opencv_contrib/blob/master/modules/sfm/src/triangulation.cpp)

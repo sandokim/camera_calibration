@@ -39,37 +39,59 @@ def get_camera_center(P):
     C = Vt[-1, :4]
     return C / C[3]
 
-def visualize_point_cloud(points_3d, colors, camera_matrices):
+def camera_center_from_extrinsics(R: np.ndarray, t: np.ndarray) -> np.ndarray:
+    """
+    R: (3, 3) 회전 행렬
+    t: (3, 1) or (3,) 변환 벡터
+    return: (3,) 카메라 중심 (월드 좌표계 기준)
+    """
+    t = t.reshape(3, 1)  # 안전하게 reshape
+    return (-R.T @ t).reshape(3,)
+
+def visualize_point_cloud(points_3d, colors, camera_matrices, extrinsics_list=None):
+    """
+    extrinsics_list: optional. list of np.ndarray (shape 3x4), each = [R | t]
+    """
     fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(points_3d[:, 0], points_3d[:, 1], points_3d[:, 2], c=colors / 255.0, s=1, label="Reconstructed Points")
 
     for i, P in enumerate(camera_matrices):
-        center = get_camera_center(P)[:3]
-        M = P[:, :3]
-        principal_axis = np.sign(np.linalg.det(M)) * M[2, :]
-        principal_axis /= np.linalg.norm(principal_axis)
-        
-        ax.scatter(center[0], center[1], center[2], c='magenta', marker='^', s=150, label=f'Cam {i}')
-        ax.quiver(center[0], center[1], center[2], principal_axis[0], principal_axis[1], principal_axis[2], 
+        if extrinsics_list is not None:
+            print("plot camera extrinsics")
+            Rt = extrinsics_list[i]
+            R, t = Rt[:, :3], Rt[:, 3]
+            center = camera_center_from_extrinsics(R, t)
+            direction = R.T @ np.array([0, 0, 1])  # camera z-axis in world
+        else:
+            print("plot camera extrinsics calculated from projection matrix")
+            center = get_camera_center(P)[:3]
+            M = P[:, :3]
+            direction = np.sign(np.linalg.det(M)) * M[2, :]
+            direction /= np.linalg.norm(direction)
+
+        ax.scatter(center[0], center[1], center[2], c='magenta', marker='o', s=100, label=f'Cam {i}')
+        ax.quiver(center[0], center[1], center[2],
+                  direction[0], direction[1], direction[2],
                   length=np.mean(np.abs(points_3d)) * 0.3, color='magenta', arrow_length_ratio=0.3)
 
     ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.set_zlabel("Z")
     ax.set_title(f"MASt3R + Multi-View Triangulation")
     
-    ref_camera_center = get_camera_center(camera_matrices[0])[:3]
-    mid_x, mid_y, mid_z = ref_camera_center[0], ref_camera_center[1], ref_camera_center[2]
+    ref_center = camera_center_from_extrinsics(extrinsics_list[0][:, :3], extrinsics_list[0][:, 3]) \
+        if extrinsics_list else get_camera_center(camera_matrices[0])[:3]
+    mid_x, mid_y, mid_z = ref_center
     fixed_half_range = 300.0
-    
     ax.set_xlim(mid_x - fixed_half_range, mid_x + fixed_half_range)
     ax.set_ylim(mid_y - fixed_half_range, mid_y + fixed_half_range)
     ax.set_zlim(mid_z - fixed_half_range, mid_z + fixed_half_range)
-    
+
     handles, labels = ax.get_legend_handles_labels()
     unique_labels = dict(zip(labels, handles))
     ax.legend(unique_labels.values(), unique_labels.keys())
-    
+
     plt.show()
+
 
 def load_images_cv() -> (List[np.ndarray], List[str]):
     image_paths = []
@@ -98,19 +120,20 @@ def load_extrinsics(image_rel_paths: List[str]) -> List[np.ndarray]:
 def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.ndarray], Ps: List[np.ndarray], model: AsymmetricMASt3R, device: torch.device) -> Tuple[np.ndarray, np.ndarray]:
     n_views = len(image_paths)
     ref_view_idx = 0
-    all_points_3d = []
-    all_colors = []
+    track_id_counter = 0
+    point_tracks = {}  # track_id: {view_idx: (x, y)}
+    pt0_to_track_id = {}  # reference view 0의 point ↔ track id 매핑
+
+    print("[3] MASt3R 기반 multi-view point tracking 시작...")
 
     for j in range(ref_view_idx + 1, n_views):
         i = ref_view_idx
-        print(f"\n- Processing Pair: View {i} and View {j}")
-        
-        print(f"  - Matching reference view {i} and view {j}")
+        print(f"\n- Matching View {i} and View {j}")
         images_pair = load_images_for_mast3r([image_paths[i], image_paths[j]], size=512)
-        
+
         with torch.no_grad():
             output = inference([tuple(images_pair)], model, device, batch_size=1, verbose=False)
-        
+
         view1, pred1 = output['view1'], output['pred1']
         view2, pred2 = output['view2'], output['pred2']
 
@@ -119,6 +142,7 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
         matches_im0, matches_im1 = fast_reciprocal_NNs(desc1, desc2, subsample_or_initxy1=8,
                                                        device=device, dist='dot', block_size=2**13)
 
+        # 유효 좌표 필터링
         H0, W0 = view1['true_shape'][0]
         valid_matches_im0 = (matches_im0[:, 0] >= 3) & (matches_im0[:, 0] < int(W0) - 3) & \
                             (matches_im0[:, 1] >= 3) & (matches_im0[:, 1] < int(H0) - 3)
@@ -129,7 +153,7 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
 
         valid_matches = valid_matches_im0 & valid_matches_im1
         matches_im0, matches_im1 = matches_im0[valid_matches], matches_im1[valid_matches]
-
+                
         num_matches = matches_im0.shape[0]
         print(f'  - Found {num_matches} valid matches.')
         
@@ -156,54 +180,57 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
                 (x0, y0), (x1, y1) = viz_matches_im0[k].T, viz_matches_im1[k].T
                 pl.plot([x0, x1 + W0_viz], [y0, y1], '-+', color=cmap(k / (n_viz - 1)), scalex=False, scaley=False)
             pl.show(block=True)
-            
-        if num_matches == 0:
+
+        for k in range(len(matches_im0)):
+            pt0 = tuple(matches_im0[k])
+            ptj = tuple(matches_im1[k])
+
+            if pt0 not in pt0_to_track_id:
+                track_id = track_id_counter
+                track_id_counter += 1
+                pt0_to_track_id[pt0] = track_id
+                point_tracks[track_id] = {ref_view_idx: pt0}
+
+            point_tracks[pt0_to_track_id[pt0]][j] = ptj
+
+    print(f"\n[4] 총 {len(point_tracks)}개의 point track 생성됨.")
+
+    print("[5] N-view triangulation 시작...")
+    points_3d, colors = [], []
+    for track in point_tracks.values():
+        if len(track) < 3:
+            continue  # 3개 뷰 이상 등장하는 track만 사용
+
+        points2d, proj_mats = [], []
+        for view_idx, (x, y) in track.items():
+            points2d.append(np.array([[x], [y]], dtype=np.float32))
+            proj_mats.append(Ps[view_idx].astype(np.float32))
+
+        points2d_cv = [cv2.UMat(pt) for pt in points2d]
+        proj_mats_cv = [cv2.UMat(P) for P in proj_mats]
+
+        try:
+            point3d_umat = cv2.sfm.triangulatePoints(points2d_cv, proj_mats_cv)
+            point3d = point3d_umat.get().reshape(-1)  # 이미 (3, 1)이므로 변환만 수행
+        except Exception as e:
+            print("Triangulation 실패:", e)
             continue
-        
-        '''
-        To do: Multi-view correspondences 관계 2D-2D-2D.. 대응점 관계 찾아서 cv2.sfm.triangulatePoints에 입력하기
-        - cv2.sfm.triangulatePoints(InputArrrayOfArrays points2d, InputArrayOfArrays projection_matrices, OutputArray points3d)
-            - 제공된 코드의 핵심은 2개 뷰(2-view)의 경우와 3개 이상의 뷰(N-view)의 경우를 나누어 처리하며, 두 경우 모두 DLT(Direct Linear Transformation) 원리를 기반으로 3D 좌표를 계산한다는 점입니다.
-            - 뷰의 개수(nviews)가 정확히 2개일 경우, triangulateDLT 함수를 각 점 쌍에 대해 호출합니다.
-                - 2-뷰의 경우(triangulateDLT): 각 대응점 쌍으로부터 4개의 선형 방정식을 만들어 AX=0 시스템을 구성하고, SVD를 이용해 X를 직접 풉니다. 이는 책 12.2절에 기술된 표준 DLT 방법과 정확히 일치합니다. 
-            - 뷰의 개수가 2개보다 많을 경우, triangulateNViews 함수를 각 점 트랙에 대해 호출합니다.
-                - 다중 뷰의 경우(triangulateNViews): 3D 점 X와 각 뷰의 깊이 스케일 λi를 모두 미지수로 두는 더 큰 선형 시스템을 구성합니다. SVD를 통해 이 시스템을 푼 뒤, 3D 점에 해당하는 부분만 추출하여 최종 결과를 얻습니다. 이 방법은 모든 뷰의 정보를 동시에 활용하여 더 안정적이고 정확한 결과를 얻을 수 있습니다.
 
-            - 다중 뷰(3개 이상)에 대해 이 함수를 호출하기 위해 필요한 입력은 `points2d`와 `projection_matrices` 두 가지입니다.
-                - points2d: 2D 대응점 데이터
-                - 이 매개변수는 여러 뷰에 걸쳐 추적된 2D 점들의 집합입니다.
-                - 예를 들어, 3개의 뷰에서 100개의 점을 삼각측량한다면:
-                    - points2d는 3개의 Mat 객체를 담고 있는 vector가 됩니다.
-                    - 각 Mat은 2x100 크기를 가집니다.
-                    - points2d[0].col(5)는 첫 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
-                    - points2d[1].col(5)는 두 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
-                    - points2d[2].col(5)는 세 번째 뷰의 6번째 점의 (x,y) 좌표입니다.
-                    - 이 세 점 points2d[0].col(5), points2d[1].col(5), points2d[2].col(5)는 모두 동일한 3D 공간상의 한 점에서 투영된 것이어야 합니다.
-                - `projection_matrices`: 투영 행렬 데이터
-                - 이 매개변수는 각 뷰에 해당하는 카메라의 투영 행렬(카메라 행렬) 집합입니다.
-                - 벡터의 크기는 전체 뷰의 개수 m으로, points2d 벡터의 크기와 정확히 일치해야 합니다.
-                - 벡터의 각 요소인 cv::Mat 객체는 3x4 크기를 가집니다.
-                - 모든 투영 행렬 P_i는 반드시 동일한 월드 좌표계(world coordinate system)를 기준으로 표현되어야 합니다.
-                - 이 행렬들은 일반적으로 사전 단계에서 계산됩니다. 예를 들어, Fundamental Matrix 또는 Trifocal Tensor를 계산한 뒤 이로부터 카메라 행렬을 복원하거나(projective reconstruction), 번들 조정(bundle adjustment)을 통해 얻어진 결과물일 수 있습니다.
-                - 각기 다른 시점에 독립적으로 캘리브레이션된 카메라 행렬들을 그대로 사용하면, 각 카메라가 자신만의 월드 좌표계를 가지므로 올바른 삼각측량이 불가능합니다.
-        '''
-        print("  - Triangulating 3D points...")
-        
-        point3d_mat = cv2.sfm.triangulatePoints(pts2d_pair, Ps_pair)
-        points_3d = point3d_mat.T
+        points_3d.append(point3d)
 
-        h_ref, w_ref, _ = images_cv[i].shape
-        for k in range(num_matches):
-            x, y = map(int, matches_im0[k])
-            if 0 <= x < w_ref and 0 <= y < h_ref:
-                all_colors.append(images_cv[i][y, x][::-1])
-                all_points_3d.append(points_3d[k])
-    
-    if not all_points_3d:
-        print("경고: 유효한 3D 포인트가 하나도 생성되지 않았습니다.")
-        return np.array([]), np.array([])
+        # 색상은 reference view 기준
+        if ref_view_idx in track:
+            x, y = map(int, track[ref_view_idx])
+            if 0 <= x < images_cv[ref_view_idx].shape[1] and 0 <= y < images_cv[ref_view_idx].shape[0]:
+                colors.append(images_cv[ref_view_idx][y, x][::-1])  # RGB
+            else:
+                colors.append(np.array([255, 255, 255]))  # fallback
+        else:
+            colors.append(np.array([255, 255, 255]))
 
-    return np.array(all_points_3d), np.array(all_colors)
+    print(f"[6] 유효 3D 포인트 수: {len(points_3d)}")
+    return np.array(points_3d), np.array(colors)
+
 
 # ----- 전체 파이프라인 -----
 def main():
@@ -213,8 +240,8 @@ def main():
 
     print("[2] 카메라 파라미터 로드 중...")
     Ks = load_intrinsics()
-    Ps_raw = load_extrinsics(image_paths)
-    Ps = [K @ P_raw for K, P_raw in zip(Ks, Ps_raw)]
+    Es = load_extrinsics(image_paths)
+    Ps = [K @ E for K, E in zip(Ks, Es)]
     print("  - Intrinsics 및 Extrinsics 로드 완료.")
 
     print("[3] MASt3R 매칭 및 multi-view 삼각측량 시작...")
@@ -227,7 +254,7 @@ def main():
     print(f"\n[4] 총 {len(all_points_3d)}개의 3D 포인트 복원 완료.")
 
     print("[5] 3D 포인트 클라우드 시각화 중...")
-    visualize_point_cloud(all_points_3d, all_colors, Ps)
+    visualize_point_cloud(all_points_3d, all_colors, Ps, extrinsics_list=Es)
 
 if __name__ == "__main__":
     main()
