@@ -30,8 +30,8 @@ EXTRINSICS_PATH = os.path.join(BASE_DIR, "extrinsics.json")
 
 # 2D-2D 매칭결과 시각화할 개수
 n_viz = 20
-# 삼각측량을 위한 최소 뷰 개수 설정 (현재 로직에서는 직접 사용되지 않음)
-MIN_VIEWS_FOR_TRIANGULATION = 2
+# 삼각측량을 위한 최소 뷰 개수 설정
+MIN_VIEWS_FOR_TRIANGULATION = 3
 
 # ----- 헬퍼 및 데이터 로드 함수 -----
 def get_camera_center(P):
@@ -116,7 +116,7 @@ def load_extrinsics(image_rel_paths: List[str]) -> List[np.ndarray]:
         Ps.append(np.array(data[rel_key])[:3, :])
     return Ps
 
-# ----- MASt3R을 이용한 특징 추출 및 2-view 삼각측량 -----
+# ----- MASt3R을 이용한 특징 추출 및 멀티뷰 삼각측량 -----
 def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.ndarray], Ps: List[np.ndarray], model: AsymmetricMASt3R, device: torch.device) -> Tuple[np.ndarray, np.ndarray]:
     n_views = len(image_paths)
     ref_view_idx = 0
@@ -198,7 +198,7 @@ def extract_and_triangulate_pairs(image_paths: List[str], images_cv: List[np.nda
     print("[5] N-view triangulation 시작...")
     points_3d, colors = [], []
     for track in point_tracks.values():
-        if len(track) < 3:
+        if len(track) < MIN_VIEWS_FOR_TRIANGULATION:
             continue  # 3개 뷰 이상 등장하는 track만 사용
 
         points2d, proj_mats = [], []
