@@ -651,8 +651,9 @@ conda activate mast3r
 pip install "numpy<2.0"
 ## cv2.sfm 직접 빌드하여 설치
 ...
-## mast34 설치
-conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia  # cuda 12.1로 재설치
+## mast3r 설치
+# conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia  # cuda 12.1로 재설치
+pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121 # cuda 12.1 설치
 cd submodules/mast3r
 pip install -r requirements.txt
 pip install -r dust3r/requirements.txt
@@ -667,9 +668,9 @@ cd submodules/asmk/cython/
 cythonize *.pyx
 cd ..
 conda install -c conda-forge faiss-gpu # faiss-gpu, containing both CPU and GPU indices, is available on Linux (x86-64 only) for CUDA 11.4 and 12.1 / For FRM, MASt3R pipeline internally uses Faiss library to store correspondences.
+pip install faiss-cpu
 pip install .  # or python3 setup.py build_ext --inplace
 cd ..
-
 
 # DKM 설치
 pip install submodules/DKM 
@@ -696,6 +697,7 @@ pip uninstall -y opencv-python opencv-python-headless
   - [MASt3R pointcloud -> python mast3r/demo.py](https://github.com/naver/mast3r/issues/30)
     - pip install faiss-cpu
     - mast3r/mast3r/demo.py -> scene.export(file_obj=outfile, file_type='ply') # pointcloud ply 저장
+    - set SSL_CERT_FILE=     # cmd 창에 입력 
     - python submodules/mast3r/demo.py --model_name MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric
 
 
